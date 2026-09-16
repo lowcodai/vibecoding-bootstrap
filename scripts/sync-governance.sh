@@ -117,7 +117,7 @@ sync_instructions() {
         [[ -f "${src}/${f}" ]] && copy_if_not_exists "${src}/${f}" "${dest}/${f}" || true
       done
       ;;
-    ai)
+    ai|m365)
       for f in "agent-safety.instructions.md" "agent-skills.instructions.md" \
                "ai-prompt-engineering-safety-best-practices.instructions.md"; do
         [[ -f "${src}/${f}" ]] && copy_if_not_exists "${src}/${f}" "${dest}/${f}" || true
