@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOOTSTRAP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-GOVERNANCE_DIR="${BOOTSTRAP_DIR}/../vibecoding-copilot-governance"
+GOVERNANCE_DIR="${GOVERNANCE_DIR:-${BOOTSTRAP_DIR}/../vibecoding-copilot-governance}"
 source "${SCRIPT_DIR}/lib/log.sh"
 source "${SCRIPT_DIR}/lib/fs.sh"
 
@@ -186,6 +186,11 @@ sync_agents() {
   [[ -f "${src}/adr-generator.agent.md" ]] && \
     copy_if_not_exists "${src}/adr-generator.agent.md" "${dest}/adr-generator.agent.md" || true
 
+  # Universal agent: Runbook generator (ADR-0004 — executes downstream of an accepted ADR,
+  # designed for hermes-solo execution on the local model by default)
+  [[ -f "${src}/runbook-generator.agent.md" ]] && \
+    copy_if_not_exists "${src}/runbook-generator.agent.md" "${dest}/runbook-generator.agent.md" || true
+
   case "$TEMPLATE_TYPE" in
     ai)
       for agent in "ai-readiness-reporter.agent.md" "agent-governance-reviewer.agent.md" "ai-team-dev.agent.md"; do
@@ -239,12 +244,15 @@ sync_methodology() {
   log_section "Synchronizing the PRD/ADR/Plan/Runbook methodology"
   local src="${GOVERNANCE_DIR}"
 
-  run_cmd mkdir -p "${DEST_DIR}/docs/prd" "${DEST_DIR}/docs/adr" "${DEST_DIR}/docs/methodology"
+  run_cmd mkdir -p "${DEST_DIR}/docs/prd" "${DEST_DIR}/docs/adr" "${DEST_DIR}/docs/runbooks" \
+    "${DEST_DIR}/docs/methodology"
 
   [[ -f "${src}/hermes/docs-prd-templates/README.md" ]] && \
     copy_if_not_exists "${src}/hermes/docs-prd-templates/README.md" "${DEST_DIR}/docs/prd/README.md" || true
   [[ -f "${src}/hermes/docs-adr-templates/README.md" ]] && \
     copy_if_not_exists "${src}/hermes/docs-adr-templates/README.md" "${DEST_DIR}/docs/adr/README.md" || true
+  [[ -f "${src}/hermes/docs-runbook-templates/README.md" ]] && \
+    copy_if_not_exists "${src}/hermes/docs-runbook-templates/README.md" "${DEST_DIR}/docs/runbooks/README.md" || true
   [[ -f "${src}/docs/methodology/PRD-ADR-PLAN-RUNBOOK-WORKFLOW.md" ]] && \
     copy_if_not_exists "${src}/docs/methodology/PRD-ADR-PLAN-RUNBOOK-WORKFLOW.md" \
       "${DEST_DIR}/docs/methodology/PRD-ADR-PLAN-RUNBOOK-WORKFLOW.md" || true

@@ -47,6 +47,9 @@ common:
     - name: prd-generator
       file: prd-generator.agent.md
       description: "Generates PRDs (Product Requirement Documents), ahead of any ADR"
+    - name: runbook-generator
+      file: runbook-generator.agent.md
+      description: "Generates Runbooks (sequenced operational execution detail), downstream of an accepted ADR"
 
   plugins:
     - name: arch
