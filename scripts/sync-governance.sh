@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # sync-governance.sh — Synchronizes governance items from vibecoding-copilot-governance
-# Usage: ./scripts/sync-governance.sh --type <base|infra|ai|app> --dest <dest-dir>
+# Usage: ./scripts/sync-governance.sh --type <base|infra|ai|app|m365> --dest <dest-dir>
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -151,19 +151,19 @@ sync_hooks() {
 
   # Type-specific hooks
   case "$TEMPLATE_TYPE" in
-    infra|ai|app)
+    infra|ai|app|m365)
       for hook in "dependency-license-checker" "fix-broken-links"; do
         [[ -d "${src}/${hook}" ]] && copy_dir_if_not_exists "${src}/${hook}" "${dest}/${hook}" || true
       done
       ;;
   esac
 
-  if [[ "$TEMPLATE_TYPE" == "infra" ]] || [[ "$TEMPLATE_TYPE" == "ai" ]]; then
+  if [[ "$TEMPLATE_TYPE" == "infra" ]] || [[ "$TEMPLATE_TYPE" == "ai" ]] || [[ "$TEMPLATE_TYPE" == "m365" ]]; then
     [[ -d "${src}/attester-import-check" ]] && \
       copy_dir_if_not_exists "${src}/attester-import-check" "${dest}/attester-import-check" || true
   fi
 
-  if [[ "$TEMPLATE_TYPE" == "ai" ]]; then
+  if [[ "$TEMPLATE_TYPE" == "ai" ]] || [[ "$TEMPLATE_TYPE" == "m365" ]]; then
     [[ -d "${src}/session-logger" ]] && \
       copy_dir_if_not_exists "${src}/session-logger" "${dest}/session-logger" || true
   fi
@@ -192,7 +192,7 @@ sync_agents() {
     copy_if_not_exists "${src}/runbook-generator.agent.md" "${dest}/runbook-generator.agent.md" || true
 
   case "$TEMPLATE_TYPE" in
-    ai)
+    ai|m365)
       for agent in "ai-readiness-reporter.agent.md" "agent-governance-reviewer.agent.md" "ai-team-dev.agent.md"; do
         [[ -f "${src}/${agent}" ]] && copy_if_not_exists "${src}/${agent}" "${dest}/${agent}" || true
       done

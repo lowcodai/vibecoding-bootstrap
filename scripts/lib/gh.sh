@@ -114,8 +114,16 @@ gh_fetch_curl_fallback() {
   fi
 }
 
-# Install a skill via gh CLI (v2.90.0+)
-# Usage: gh_install_skill <skill-name>
+# Install a skill from github/awesome-copilot into the project.
+# Usage: gh_install_skill <skill-name> [dest_dir]
+#
+# Deliberately does NOT use `gh skill install` (gh CLI >= 2.90, preview feature): that command
+# (a) writes into a host-specific directory relative to the *current working directory*
+# (`.agents/skills/` for most agents at the default --agent/--scope), not into $dest_dir in the
+# target project — silently missing every skill whenever the underlying `gh skill install` call
+# succeeds; and (b) resolves the skill version as "latest tagged release, else default branch
+# HEAD", ignoring AWESOME_COPILOT_REF entirely — defeating this tool's pinned-SHA reproducibility
+# goal. Always download deterministically from the pinned ref instead.
 gh_install_skill() {
   local skill_name="$1"
   local dest_dir="${2:-.github/skills}"
@@ -126,19 +134,11 @@ gh_install_skill() {
   fi
 
   if [[ "${DRY_RUN:-false}" == "true" ]]; then
-    log_dry "gh skills install github/awesome-copilot $skill_name"
+    log_dry "download github/awesome-copilot skills/${skill_name} (ref: ${AWESOME_COPILOT_REF:-main}) → ${dest_dir}/${skill_name}"
     return 0
   fi
 
-  # Try installing via gh skills (requires gh CLI v2.90.0+)
-  local gh_version
-  gh_version=$(gh --version 2>/dev/null | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
-  if gh skills install github/awesome-copilot "$skill_name" 2>/dev/null; then
-    log_success "Skill installed via gh: $skill_name"
-  else
-    log_warn "gh skills install not available (gh $gh_version) — manual download"
-    _install_skill_manual "$skill_name" "$dest_dir"
-  fi
+  _install_skill_manual "$skill_name" "$dest_dir"
 }
 
 # Fallback: manually download a skill from awesome-copilot
@@ -149,22 +149,43 @@ _install_skill_manual() {
   local skill_dest="$dest_dir/$skill_name"
 
   run_cmd mkdir -p "$skill_dest"
-  # List the skill's files then download them
-  local files
-  files=$(gh api "repos/github/awesome-copilot/contents/skills/${skill_name}?ref=${ref}" \
-    --jq '.[].path' 2>/dev/null) || {
+  if ! gh api "repos/github/awesome-copilot/contents/skills/${skill_name}?ref=${ref}" &>/dev/null; then
     log_warn "Skill $skill_name not found in awesome-copilot"
     echo "# PLACEHOLDER — Skill: $skill_name" > "$skill_dest/README.md"
     echo "# Install manually: gh skills install github/awesome-copilot $skill_name" >> "$skill_dest/README.md"
     return 0
+  fi
+
+  # Recurse into subdirectories (e.g. skills/<name>/references/, .../references/skeletons/) —
+  # a flat one-level listing silently drops nested skill content (threat-model-analyst,
+  # secret-scanning both ship a references/ subtree).
+  _fetch_awesome_copilot_dir "skills/${skill_name}" "$skill_dest" "$ref"
+  log_success "Skill installed manually: $skill_name → $skill_dest"
+}
+
+# Recursively downloads every file under a directory of github/awesome-copilot.
+# Usage: _fetch_awesome_copilot_dir <repo_path> <local_dest_dir> <ref>
+_fetch_awesome_copilot_dir() {
+  local repo_path="$1" local_dest="$2" ref="$3"
+
+  local entries
+  entries=$(gh api "repos/github/awesome-copilot/contents/${repo_path}?ref=${ref}" \
+    --jq '.[] | .type + "\t" + .path' 2>/dev/null) || {
+    log_warn "Unable to list: $repo_path"
+    return 0
   }
 
-  while IFS= read -r file_path; do
+  while IFS=$'\t' read -r entry_type entry_path; do
+    [[ -z "$entry_path" ]] && continue
     local filename
-    filename=$(basename "$file_path")
-    gh_fetch_awesome_copilot_file "$file_path" "$skill_dest/$filename" "$ref"
-  done <<< "$files"
-  log_success "Skill installed manually: $skill_name → $skill_dest"
+    filename=$(basename "$entry_path")
+    if [[ "$entry_type" == "dir" ]]; then
+      run_cmd mkdir -p "${local_dest}/${filename}"
+      _fetch_awesome_copilot_dir "$entry_path" "${local_dest}/${filename}" "$ref"
+    else
+      gh_fetch_awesome_copilot_file "$entry_path" "${local_dest}/${filename}" "$ref"
+    fi
+  done <<< "$entries"
 }
 
 # Install a plugin via copilot CLI

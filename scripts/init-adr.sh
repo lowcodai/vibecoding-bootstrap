@@ -61,6 +61,7 @@ generate_adr_0001() {
     infra)  type_context="Infrastructure project using Ansible, Docker and GitHub Actions for IaC and SRE automation." ;;
     ai)     type_context="AI/agents project integrating AI governance, safety, and agentic usage practices for GitHub Copilot." ;;
     app)    type_context="Web/API application with CI/CD, accessibility (a11y) and good development practices." ;;
+    m365)   type_context="Microsoft 365 Copilot declarative agent (MCP-backed plugin), standardized from vibecoding-template-m365-agent." ;;
   esac
 
   cat > "$adr_file" << EOF

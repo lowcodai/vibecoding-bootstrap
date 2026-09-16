@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # apply-template.sh — Copies and instantiates a template into the target directory
-# Usage: ./scripts/apply-template.sh --type <base|infra|ai|app> --name <repo-name> --dest <dest-dir>
+# Usage: ./scripts/apply-template.sh --type <base|infra|ai|app|m365> --name <repo-name> --dest <dest-dir>
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,7 +39,7 @@ parse_args() {
   done
 
   if [[ -z "$TEMPLATE_TYPE" ]]; then
-    log_error "--type is required (base|infra|ai|app)"
+    log_error "--type is required (base|infra|ai|app|m365)"
     exit 1
   fi
   if [[ -z "$REPO_NAME" ]]; then
@@ -59,13 +59,13 @@ parse_args() {
 
 # ─── Validation ────────────────────────────────────────────────────────────────
 validate() {
-  local valid_types=("base" "infra" "ai" "app")
+  local valid_types=("base" "infra" "ai" "app" "m365")
   local valid=false
   for t in "${valid_types[@]}"; do
     [[ "$TEMPLATE_TYPE" == "$t" ]] && valid=true && break
   done
   if [[ "$valid" == "false" ]]; then
-    log_error "Invalid type: $TEMPLATE_TYPE (values: base|infra|ai|app)"
+    log_error "Invalid type: $TEMPLATE_TYPE (values: base|infra|ai|app|m365)"
     exit 1
   fi
 
@@ -670,6 +670,7 @@ apply_type_specific() {
     infra) apply_infra_files ;;
     ai)    apply_ai_files ;;
     app)   apply_app_files ;;
+    m365)  apply_m365_files ;;
     base)  log_verbose "Type base: no additional type-specific files" ;;
   esac
 }
@@ -798,6 +799,46 @@ jobs:
         run: echo "TODO: Configure axe-core or pa11y for accessibility tests"
 EOF
     log_success "Created: .github/workflows/a11y-check.yml"
+  fi
+}
+
+apply_m365_files() {
+  # appPackage/: Teams app manifest + declarative agent manifest + MCP plugin manifest
+  # (three-manifest family — see vibecoding-template-m365-agent's own ADR-0001 example).
+  # env/: Microsoft 365 Agents Toolkit per-environment config (.env.local, .env.dev, ...).
+  for dir in appPackage env; do
+    ensure_dir_with_gitkeep "${DEST_DIR}/${dir}"
+  done
+
+  if [[ ! -f "${DEST_DIR}/.github/workflows/m365-agent-manifest-check.yml" ]]; then
+    cat > "${DEST_DIR}/.github/workflows/m365-agent-manifest-check.yml" << 'EOF'
+name: M365 Agent Manifest Check
+on:
+  pull_request:
+    paths: ["appPackage/**"]
+jobs:
+  manifest-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate manifest JSON files are well-formed
+        run: |
+          shopt -s globstar nullglob
+          found=0
+          for f in appPackage/**/*.json; do
+            found=1
+            echo "Checking $f"
+            python3 -m json.tool "$f" > /dev/null
+          done
+          if [[ "$found" -eq 0 ]]; then
+            echo "No manifest JSON files found yet under appPackage/ — nothing to validate."
+          fi
+      - name: Reminder
+        run: |
+          echo "This is a syntax check only. Validate against the current Microsoft 365 Agents"
+          echo "Toolkit schema (https://github.com/microsoft/m365-agent-templates) before publishing."
+EOF
+    log_success "Created: .github/workflows/m365-agent-manifest-check.yml"
   fi
 }
 

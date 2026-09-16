@@ -4,7 +4,7 @@
 # Usage: ./scripts/new-project.sh [OPTIONS]
 #
 # Options:
-#   -t, --type <base|infra|ai|app>   Template type
+#   -t, --type <base|infra|ai|app|m365>   Template type
 #   -n, --name <repo-name>            Repository name
 #   -v, --visibility <public|private> GitHub visibility (default: private)
 #   -o, --org <org>                   GitHub organization (optional)
@@ -62,7 +62,7 @@ Usage:
   ./scripts/new-project.sh [OPTIONS]
 
 Options:
-  -t, --type <base|infra|ai|app>   Template type (interactive if omitted)
+  -t, --type <base|infra|ai|app|m365>   Template type (interactive if omitted)
   -n, --name <repo-name>            Repository name (interactive if omitted)
   -v, --visibility <public|private> GitHub visibility (default: private)
   -o, --org <org>                   GitHub organization (optional)
@@ -92,6 +92,7 @@ Examples:
 
 Sources:
   Templates:   https://github.com/lowcodai/vibecoding-template-{base,infra,ai,app}
+               https://github.com/lowcodai/vibecoding-template-m365-agent (type: m365)
   Governance:  https://github.com/lowcodai/vibecoding-copilot-governance
   Bootstrap:   https://github.com/lowcodai/vibecoding-bootstrap
   Awesome Copilot: https://github.com/github/awesome-copilot
@@ -125,14 +126,14 @@ parse_args() {
 
 # ─── Input validation ──────────────────────────────────────────────────────────
 validate_inputs() {
-  local valid_types=("base" "infra" "ai" "app")
+  local valid_types=("base" "infra" "ai" "app" "m365")
   if [[ -n "$TEMPLATE_TYPE" ]]; then
     local valid=false
     for t in "${valid_types[@]}"; do
       [[ "$TEMPLATE_TYPE" == "$t" ]] && valid=true && break
     done
     if [[ "$valid" == "false" ]]; then
-      log_error "Invalid type: $TEMPLATE_TYPE (values: base|infra|ai|app)"
+      log_error "Invalid type: $TEMPLATE_TYPE (values: base|infra|ai|app|m365)"
       exit 1
     fi
   fi
@@ -168,7 +169,8 @@ collect_interactive_params() {
       "base — Generic (any project)" \
       "infra — Infrastructure, SRE, Ansible, Docker" \
       "ai — AI, agents, MCP, prompts, RAG" \
-      "app — Web application, API, SaaS"
+      "app — Web application, API, SaaS" \
+      "m365 — Microsoft 365 Copilot declarative agent"
     TEMPLATE_TYPE="${SELECTED%% *}"
   fi
 

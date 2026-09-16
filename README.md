@@ -46,13 +46,14 @@ Check with:
 | `infra` | Infrastructure, SRE, Ansible, Docker | `vibecoding-template-infra` |
 | `ai` | AI, agents, MCP, prompts, RAG | `vibecoding-template-ai` |
 | `app` | Web applications, API, MVP, SaaS | `vibecoding-template-app` |
+| `m365` | Microsoft 365 Copilot declarative agents (MCP-backed plugins) | `vibecoding-template-m365-agent` |
 
 ## CLI Options
 
 ```
 ./scripts/new-project.sh [OPTIONS]
 
-  -t, --type <base|infra|ai|app>   Template type
+  -t, --type <base|infra|ai|app|m365>   Template type
   -n, --name <repo-name>            Repository name
   -v, --visibility <public|private> GitHub visibility (default: private)
   -o, --org <org>                   GitHub organization

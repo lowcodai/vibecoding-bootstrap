@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # install-awesome-copilot.sh — Installs awesome-copilot items for a project type
-# Usage: ./scripts/install-awesome-copilot.sh --type <base|infra|ai|app> --dest <dest-dir>
+# Usage: ./scripts/install-awesome-copilot.sh --type <base|infra|ai|app|m365> --dest <dest-dir>
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -82,6 +82,19 @@ get_skills_for_type() {
     app)
       skills+=("agent-owasp-compliance")
       ;;
+    m365)
+      skills+=(
+        "agent-owasp-compliance"
+        "mcp-create-declarative-agent"
+        "declarative-agents"
+        "entra-agent-user"
+        "mcp-security-audit"
+        "mcp-implementation-security-review"
+        "threat-model-analyst"
+        "secret-scanning"
+        "mcp-deploy-manage-agents"
+      )
+      ;;
   esac
 
   printf '%s\n' "${skills[@]}"
@@ -106,6 +119,12 @@ get_agents_for_type() {
         "accessibility-runtime-tester.agent.md"
       )
       ;;
+    m365)
+      agents+=(
+        "declarative-agents-architect.agent.md"
+        "mcp-m365-agent-expert.agent.md"
+      )
+      ;;
   esac
 
   printf '%s\n' "${agents[@]}"
@@ -122,6 +141,9 @@ get_plugins_for_type() {
       ;;
     app)
       plugins+=("ai-team-orchestration")
+      ;;
+    m365)
+      plugins+=("mcp-m365-copilot")
       ;;
   esac
 
@@ -184,6 +206,13 @@ install_instructions() {
       ;;
     app)
       type_instructions=("a11y.instructions.md" "containerization-docker-best-practices.instructions.md")
+      ;;
+    m365)
+      type_instructions=(
+        "declarative-agents-microsoft365.instructions.md"
+        "mcp-m365-copilot.instructions.md"
+        "security-and-owasp.instructions.md"
+      )
       ;;
   esac
 

@@ -69,3 +69,12 @@ templates:
       - public/.gitkeep
       - .github/workflows/release.yml
       - .github/workflows/a11y-check.yml
+
+  m365:
+    <<: *defaults
+    source_repo: vibecoding-template-m365-agent
+    description: "Template for Microsoft 365 Copilot declarative agents (MCP-backed plugins)"
+    extra_files:
+      - appPackage/.gitkeep
+      - env/.gitkeep
+      - .github/workflows/m365-agent-manifest-check.yml

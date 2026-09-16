@@ -29,7 +29,7 @@ gh repo clone lowcodai/<repo-to-align>
 
 ## Step 1 — Identify the closest template type
 
-`base | infra | ai | app` — choose the one that matches the target repo (it doesn't matter
+`base | infra | ai | app | m365` — choose the one that matches the target repo (it doesn't matter
 whether it was originally created with `new-project.sh`: `--extend-only` only adds what is
 missing, and never overwrites).
 
@@ -40,7 +40,7 @@ missing, and never overwrites).
 ```bash
 cd vibecoding-bootstrap
 DRY_RUN=true ./scripts/sync-governance.sh \
-  --type <base|infra|ai|app> \
+  --type <base|infra|ai|app|m365> \
   --dest ../<repo-to-align> \
   --extend-only --verbose
 ```
@@ -73,7 +73,7 @@ it **must** show up as `[SKIP]`, never as `[CREATE]` — otherwise `--extend-onl
 
 ```bash
 ./scripts/sync-governance.sh \
-  --type <base|infra|ai|app> \
+  --type <base|infra|ai|app|m365> \
   --dest ../<repo-to-align> \
   --extend-only
 ```

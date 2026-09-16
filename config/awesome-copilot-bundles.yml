@@ -187,6 +187,69 @@ bundles:
       - name: containerization-docker-best-practices
         file: containerization-docker-best-practices.instructions.md
 
+  m365:
+    skills:
+      - name: agent-owasp-compliance
+        description: "OWASP compliance for agents"
+      - name: mcp-create-declarative-agent
+        description: "Scaffold a declarative agent consuming an MCP server"
+      - name: declarative-agents
+        description: "Declarative agent scaffolding"
+      - name: entra-agent-user
+        description: "Entra ID App Registration for an agent"
+      - name: mcp-security-audit
+        description: "Security audit of an MCP integration"
+      - name: mcp-implementation-security-review
+        description: "Security review of an MCP implementation"
+      - name: threat-model-analyst
+        description: "Formal threat model (STRIDE/DFD) for the agent's design"
+      - name: secret-scanning
+        description: "Verifies a Doppler-only (or equivalent) secret policy"
+      - name: mcp-deploy-manage-agents
+        description: "Deployment and lifecycle management of MCP-backed agents"
+      - name: mcp-release-qa
+        description: "Release QA gate for MCP-backed agents"
+        optional: true
+        warning: "Did not exist at the pinned awesome_copilot.ref below at the time this bundle was written — add manually from a current commit, see vibecoding-template-m365-agent's own manifest for the pattern."
+      - name: verify-agent-action
+        description: "Per-action verification before certifying a capability works"
+        optional: true
+        warning: "Same caveat as mcp-release-qa above — not on the pinned ref."
+    hooks:
+      - name: session-logger
+        description: "Copilot session logging"
+      - name: dependency-license-checker
+        description: "Checks dependency licenses"
+      - name: fix-broken-links
+        description: "Detects and fixes broken links"
+      - name: attester-import-check
+        description: "Checks Attester imports"
+    agents:
+      - name: declarative-agents-architect
+        file: declarative-agents-architect.agent.md
+        description: "Declarative agent platform architecture (vs. Copilot Studio)"
+      - name: mcp-m365-agent-expert
+        file: mcp-m365-agent-expert.agent.md
+        description: "Microsoft 365 Copilot agent backed by an MCP server"
+      - name: ai-readiness-reporter
+        file: ai-readiness-reporter.agent.md
+        description: "AI Readiness maturity report"
+        optional: true
+      - name: agent-governance-reviewer
+        file: agent-governance-reviewer.agent.md
+        description: "Agent governance review"
+        optional: true
+    plugins:
+      - name: mcp-m365-copilot
+        description: "MCP + Microsoft 365 Copilot toolchain — installs into the Copilot CLI's global environment, not the repo; run on the host that actually executes the agent (e.g. Arcane's VPS2), not necessarily where this bundle was applied"
+    instructions:
+      - name: declarative-agents-microsoft365
+        file: declarative-agents-microsoft365.instructions.md
+      - name: mcp-m365-copilot
+        file: mcp-m365-copilot.instructions.md
+      - name: security-and-owasp
+        file: security-and-owasp.instructions.md
+
 # Source reference for verification
 awesome_copilot:
   repo: github/awesome-copilot
