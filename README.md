@@ -100,7 +100,17 @@ config/
 bash tests/test-dry-run.sh
 bash tests/test-idempotency.sh
 bash tests/test-extend-only.sh
+bash tests/test-dev-factory-sync.sh
 ```
+
+## Dev factory (ADR-0005)
+
+`sync-governance.sh` also installs the sequential Claude Code team kit from
+`vibecoding-copilot-governance/dev-factory/project-template/`: `CLAUDE.md`, `.claude/settings.json`,
+`.ai/orchestration.yaml`, `.ai/tasks/TASK-template.md`, `.ai/roles/*.md` and
+`scripts/orchestrate.py`. Existing files are never overwritten, so a project's tuned
+`orchestration.yaml` survives re-syncs. Configure the gateway URLs and validation commands in
+`.ai/orchestration.yaml` after the first sync.
 
 ## Security
 
