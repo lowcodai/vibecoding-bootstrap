@@ -36,10 +36,12 @@ check "sync exits 0" "[[ $rc -eq 0 ]]"
 
 for f in CLAUDE.md .claude/settings.json .ai/orchestration.yaml .ai/.gitignore \
          .ai/tasks/TASK-template.md .ai/roles/dev.md .ai/roles/review.md .ai/roles/test.md \
-         scripts/orchestrate.py; do
+         scripts/orchestrate.py .claude/hooks/tool_guardian.py .claude/hooks/secrets_scanner.py; do
   check "installed: $f" "[[ -f '${TMPDIR}/${f}' ]]"
 done
 check "orchestrate.py is executable" "[[ -x '${TMPDIR}/scripts/orchestrate.py' ]]"
+check "hooks are executable" "[[ -x '${TMPDIR}/.claude/hooks/tool_guardian.py' && -x '${TMPDIR}/.claude/hooks/secrets_scanner.py' ]]"
+check "settings.json wires the hooks" "grep -q 'tool_guardian.py' '${TMPDIR}/.claude/settings.json' && grep -q 'secrets_scanner.py' '${TMPDIR}/.claude/settings.json'"
 check "CLAUDE.md project name substituted" "grep -q 'CLAUDE.md — vibecoding-test-dev-factory' '${TMPDIR}/CLAUDE.md'"
 check "no __pycache__ copied" "[[ -z \"\$(find '${TMPDIR}' -name '*.pyc')\" ]]"
 

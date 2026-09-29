@@ -107,7 +107,8 @@ bash tests/test-dev-factory-sync.sh
 
 `sync-governance.sh` also installs the sequential Claude Code team kit from
 `vibecoding-copilot-governance/dev-factory/project-template/`: `CLAUDE.md`, `.claude/settings.json`,
-`.ai/orchestration.yaml`, `.ai/tasks/TASK-template.md`, `.ai/roles/*.md` and
+`.claude/hooks/` (tool guardian and secrets scanner), `.ai/orchestration.yaml`,
+`.ai/tasks/TASK-template.md`, `.ai/roles/*.md` and
 `scripts/orchestrate.py`. Existing files are never overwritten, so a project's tuned
 `orchestration.yaml` survives re-syncs. Configure the gateway URLs and validation commands in
 `.ai/orchestration.yaml` after the first sync.
