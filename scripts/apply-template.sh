@@ -109,6 +109,146 @@ apply_base_files() {
   done
 }
 
+# ─── AGENTS.md: project rulebook ───────────────────────────────────────────────
+# Type-specific rules appended to the generic rulebook
+agents_md_type_rules() {
+  case "$TEMPLATE_TYPE" in
+    infra) cat << 'EOF'
+- Ansible tasks are idempotent; run `ansible-lint` before committing.
+- Docker images are pinned by digest, never by a floating tag.
+- Never run playbooks, `terraform apply` or `docker push` against real environments from an
+  agent task: agents change code, humans (or a Runbook) apply it.
+- Any change to production, public endpoints, DNS or TLS is an **ask-first** change.
+EOF
+    ;;
+    ai) cat << 'EOF'
+- Prompts live in `prompts/`, versioned with the code that uses them; a prompt change is a code
+  change (task, review, test).
+- No secrets, personal data or customer data in prompts, fixtures or evaluation datasets.
+- Changing a model, a provider or an agent's tool permissions requires an ADR.
+- Model and prompt evaluations in CI must stay green; never lower a threshold to pass.
+EOF
+    ;;
+    app) cat << 'EOF'
+- Every new feature ships with tests; do not lower the coverage threshold.
+- Any API change updates the OpenAPI spec in the same commit.
+- UI changes meet WCAG 2.1 AA (semantic HTML, keyboard access, labels, contrast).
+- A new runtime dependency is an **ask-first** change (license and supply-chain check).
+EOF
+    ;;
+    m365) cat << 'EOF'
+- Agent manifests live in `appPackage/` and must pass the manifest check workflow.
+- Files in `env/` never contain secrets; secrets come from the secret manager only.
+- Entra ID app registrations, scopes and MCP server permissions are **ask-first** changes.
+EOF
+    ;;
+    *) cat << 'EOF'
+- No type-specific rules yet: add them here as the project's stack settles.
+EOF
+    ;;
+  esac
+}
+
+generate_agents_md() {
+  local dest="$1"
+  cat > "$dest" << 'EOF'
+# AGENTS.md — {{REPO_NAME}}
+
+Rulebook for every agent (Hermes, Claude Code, Copilot) and every human contributor. Read it in
+full before changing anything. An accepted ADR (`docs/adr/`) overrides this file: if you find a
+conflict, stop and report it. Keep this file short (< ~1,500 tokens) — details belong in ADRs.
+
+## Project
+
+- **Purpose:** <!-- TODO: one or two sentences -->
+- **Type:** {{TEMPLATE_TYPE}} · **Stack:** <!-- TODO: languages, frameworks, versions -->
+- **Language:** English for all documentation, code comments, commits and PRs (ADR-0002).
+
+## Commands
+
+| Purpose | Command |
+|---------|---------|
+| Install | <!-- TODO --> |
+| Lint    | <!-- TODO --> |
+| Test    | <!-- TODO --> |
+| Build   | <!-- TODO --> |
+
+Lint and Test must be identical to `validation.commands` in `.ai/orchestration.yaml`: the
+orchestrator runs those commands to decide whether a task passes.
+
+## Repository map
+
+| Path | Content |
+|------|---------|
+| `docs/prd/` | Intent: problem, non-goals, success criteria |
+| `docs/adr/` | Decisions, including `execution_mode` — binding |
+| `docs/runbooks/` | Operational procedures executed by Hermes |
+| `docs/operations/` | Hermes continuity state (`CURRENT`, `HANDOFF`, `ACTIVITY`) |
+| `.ai/tasks/` | Task contracts (one per unit of code work) |
+| `.ai/roles/`, `.ai/orchestration.yaml` | Team configuration — owned by humans |
+| `.ai/runs/` | Run state and logs — owned by `scripts/orchestrate.py` |
+| <!-- TODO --> | <!-- source, tests, infra directories --> |
+
+## How work flows
+
+1. Intent is written as a PRD, the technical choice as an ADR. No code without a decision.
+2. Code work is a task contract `.ai/tasks/TASK-NNNN.md`, run by `scripts/orchestrate.py`:
+   DEV → REVIEW → TEST, one role at a time, on branch/worktree `agent/TASK-NNNN`.
+3. `READY_FOR_APPROVAL` → a human reviews and merges. Operations follow a Runbook instead.
+
+| Role | Does | Never |
+|------|------|-------|
+| Hermes | frames work, writes task contracts, runs the orchestrator, arbitrates, reports | writes code, merges |
+| DEV | implements, writes tests, runs lint/tests, commits locally | pushes, merges, leaves the scope |
+| REVIEW | judges the diff against ACs and ADRs | edits files |
+| TEST | judges validation results against ACs | edits files, overrides a failing command |
+| Human | decides ADRs, approves, merges | — |
+
+## Conventions
+
+- Conventional commits (`feat(scope): ...`), small and focused; one logical change per commit.
+- Tests ship with the code they cover; follow existing patterns before creating new ones.
+- Change only what the task's **Scope** lists — no drive-by refactoring or reformatting.
+
+## Boundaries
+
+**Always**
+- Read the task contract and its linked ADRs/PRD before editing.
+- Run lint and tests and report their real output before declaring work done.
+- Leave the worktree clean; record any gap or risk in your result.
+
+**Ask first** — stop, report, let Hermes escalate to a human
+- A decision no accepted ADR covers, or an ADR that contradicts the code.
+- New dependency, database schema or public API/contract change, CI workflow change.
+- Anything touching authentication, secrets, access control, production, public
+  infrastructure or recurring cost.
+
+**Never**
+- `git push`, `merge`, `rebase`, `reset --hard`, force operations, or commits on `main`.
+- Commit or read secrets (`.env*`, keys, tokens, credentials).
+- Skip, disable or weaken a test, a lint rule or a threshold to get green.
+- Edit `.ai/orchestration.yaml`, `.ai/roles/`, `.ai/runs/` or `.claude/` during a task.
+
+## Definition of done
+
+- Every acceptance criterion is met and covered by a test.
+- Lint and tests pass (real output, not assumed); the worktree is clean.
+- `CHANGELOG.md` updated if the change is user-visible; docs/ADR updated if behaviour changes.
+
+## Type-specific rules ({{TEMPLATE_TYPE}})
+
+EOF
+  agents_md_type_rules >> "$dest"
+  cat >> "$dest" << 'EOF'
+
+## References
+
+- Governance: <https://github.com/lowcodai/vibecoding-copilot-governance> (standards, policies,
+  ADR-0004 escalation criteria, ADR-0005 team workflow)
+- Copilot agents, if used: `.github/agents/`
+EOF
+}
+
 # ─── Inline generation when the template source is absent ─────────────────────
 generate_base_files_inline() {
   # In dry-run, list the files that would be created without creating them
@@ -155,9 +295,9 @@ generate_base_files_inline() {
 - [ROADMAP](ROADMAP.md)
 - [CONTRIBUTING](CONTRIBUTING.md)
 
-## Available Copilot agents
+## Contributing with agents
 
-See [AGENTS.md](AGENTS.md)
+Rules for agents and humans: [AGENTS.md](AGENTS.md)
 
 ## License
 
@@ -234,29 +374,12 @@ EOF
     log_skip "ROADMAP.md"
   fi
 
-  # AGENTS.md
+  # AGENTS.md — the project rulebook read by every agent (Hermes, Claude Code DEV, Copilot)
+  # and every human contributor. Keep it under ~1,500 tokens: Hermes and DEV read it in full
+  # on every task (ADR-0005). REVIEW/TEST runs do not load it (--bare).
   if [[ ! -f "${DEST_DIR}/AGENTS.md" ]]; then
-    LANG_SECTION=$'## Language\n\nAll repository documentation is written in English (ADRs, PRDs, runbooks, README, code comments). No retroactive translation required for pre-existing content.'
-    cat > "${DEST_DIR}/AGENTS.md" << EOF
-# Copilot Agents
-
-${LANG_SECTION}
-
-This file lists the GitHub Copilot agents available in this project.
-Source: [github/awesome-copilot](https://github.com/github/awesome-copilot)
-
-## Installed agents
-
-| Agent | Description | File |
-|-------|-------------|------|
-| ADR Generator | Generates Architecture Decision Records | \`.github/agents/adr-generator.agent.md\` |
-| PRD Generator | Generates Product Requirement Documents | \`.github/agents/prd-generator.agent.md\` |
-
-## Usage
-
-In GitHub Copilot Chat, reference an agent with \`@<agent-name>\`.
-Custom agents are automatically available via their \`.agent.md\` files.
-EOF
+    generate_agents_md "${DEST_DIR}/AGENTS.md"
+    substitute_placeholders "${DEST_DIR}/AGENTS.md"
     log_success "Created: AGENTS.md"
   else
     log_skip "AGENTS.md"
@@ -415,6 +538,7 @@ ${TEMPLATE_TYPE}
 <!-- TODO: Describe the project context for Copilot agents -->
 
 ## Standards
+- Project rules, commands and boundaries: see AGENTS.md (read it first)
 - Follow the conventions defined in [vibecoding-copilot-governance](https://github.com/lowcodai/vibecoding-copilot-governance)
 - Use conventional commits
 - Document architecture decisions in docs/adr/
