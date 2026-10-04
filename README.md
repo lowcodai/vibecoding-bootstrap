@@ -101,6 +101,7 @@ bash tests/test-dry-run.sh
 bash tests/test-idempotency.sh
 bash tests/test-extend-only.sh
 bash tests/test-dev-factory-sync.sh
+bash tests/test-template-agents-md.sh   # needs vibecoding-template-* clones next to this repo
 ```
 
 ## Dev factory (ADR-0005)

@@ -149,6 +149,42 @@ EOF
   esac
 }
 
+# Type-specific rows of the AGENTS.md repository map (directories created by apply_<type>_files)
+agents_md_type_map() {
+  case "$TEMPLATE_TYPE" in
+    infra) cat << 'EOF'
+| `ansible/` | Inventory, playbooks and roles (idempotent) |
+| `docker/` | Images and compose files (pinned by digest) |
+| `monitoring/` | Dashboards and alert rules |
+| `cmdb/` | Configuration inventory |
+EOF
+    ;;
+    ai) cat << 'EOF'
+| `agents/` | Agent definitions |
+| `prompts/` | Versioned prompts |
+| `mcp/` | MCP servers and configuration |
+| `rag/` | Retrieval pipelines |
+| `llm-wiki/` | Knowledge base |
+EOF
+    ;;
+    app) cat << 'EOF'
+| `src/` | Application source |
+| `tests/` | Automated tests |
+| `public/` | Static assets |
+EOF
+    ;;
+    m365) cat << 'EOF'
+| `appPackage/` | Teams app, declarative agent and MCP plugin manifests |
+| `env/` | Agents Toolkit environment config — never secrets |
+EOF
+    ;;
+    *) cat << 'EOF'
+| <!-- TODO --> | <!-- source and test directories --> |
+EOF
+    ;;
+  esac
+}
+
 generate_agents_md() {
   local dest="$1"
   cat > "$dest" << 'EOF'
@@ -187,7 +223,9 @@ orchestrator runs those commands to decide whether a task passes.
 | `.ai/tasks/` | Task contracts (one per unit of code work) |
 | `.ai/roles/`, `.ai/orchestration.yaml` | Team configuration — owned by humans |
 | `.ai/runs/` | Run state and logs — owned by `scripts/orchestrate.py` |
-| <!-- TODO --> | <!-- source, tests, infra directories --> |
+EOF
+  agents_md_type_map >> "$dest"
+  cat >> "$dest" << 'EOF'
 
 ## How work flows
 
