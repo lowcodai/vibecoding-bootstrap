@@ -50,6 +50,21 @@ for dir in docs/adr docs/architecture docs/runbooks .github/workflows .github/IS
   [[ -d "${TMPDIR_BASE}/${dir}" ]] && pass "Directory present: $dir" || fail "Directory missing: $dir"
 done
 
+# AGENTS.md is the project rulebook (not a Copilot agent list)
+for heading in "## Commands" "## Boundaries" "## Definition of done" "## Type-specific rules (base)"; do
+  grep -qF "$heading" "${TMPDIR_BASE}/AGENTS.md" && \
+    pass "AGENTS.md has: $heading" || fail "AGENTS.md missing: $heading"
+done
+grep -q "{{" "${TMPDIR_BASE}/AGENTS.md" && \
+  fail "AGENTS.md has unresolved placeholders" || pass "AGENTS.md placeholders resolved"
+for type in infra ai app m365; do
+  tmp_type="${TMPDIR_BASE}-${type}"
+  bash "${SCRIPTS}/apply-template.sh" --type "$type" --name "test-${type}" --dest "$tmp_type" >/dev/null 2>&1
+  grep -qF "## Type-specific rules (${type})" "${tmp_type}/AGENTS.md" && \
+    pass "AGENTS.md type rules: $type" || fail "AGENTS.md type rules missing: $type"
+  rm -rf "$tmp_type"
+done
+
 # Test: missing file recreated in extend-only
 rm -f "${TMPDIR_BASE}/BACKLOG.md"
 bash "${SCRIPTS}/apply-template.sh" \

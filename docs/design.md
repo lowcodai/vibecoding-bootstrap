@@ -15,10 +15,12 @@ Each script has a single responsibility:
 - `install-awesome-copilot.sh`: external items
 - `init-*.sh`: GitHub-specific initialization
 
-### 4. External configuration
-The choices of which items to include live in YAML files:
-- `config/templates.yml`: which files to include
-- `config/awesome-copilot-bundles.yml`: which awesome-copilot items
+### 4. External configuration (partial — see governance audit B4/B8)
+Intended: the choices of which items to include live in YAML files
+(`config/templates.yml`, `config/awesome-copilot-bundles.yml`). Actual state: neither file is
+read by `apply-template.sh` or `sync-governance.sh`, whose lists are hard-coded; only
+`config/labels.yml` is read (by `init-labels.sh`). Treat the scripts as the source of truth until
+this is resolved.
 
 ### 5. macOS/Linux compatibility
 - Bash 4+ required (not macOS's bash 3)

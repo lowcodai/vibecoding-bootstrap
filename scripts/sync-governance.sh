@@ -5,7 +5,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BOOTSTRAP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-GOVERNANCE_DIR="${GOVERNANCE_DIR:-${BOOTSTRAP_DIR}/../vibecoding-copilot-governance}"
+GOVERNANCE_DIR="${GOVERNANCE_DIR:-${VIBECODING_GOVERNANCE_DIR:-${BOOTSTRAP_DIR}/../vibecoding-copilot-governance}}"
 source "${SCRIPT_DIR}/lib/log.sh"
 source "${SCRIPT_DIR}/lib/fs.sh"
 
@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/lib/fs.sh"
 
 TEMPLATE_TYPE=""
 DEST_DIR=""
-LANG_CODE="en"   # default: English. Override: --lang fr to continue an existing French line.
+LANG_CODE="en"   # Only 'en' is supported (ADR-0002). The flag is kept for CLI compatibility.
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -37,57 +37,11 @@ parse_args() {
     log_error "--dest is required"
     exit 1
   fi
-  if [[ "$LANG_CODE" != "en" && "$LANG_CODE" != "fr" ]]; then
-    log_error "--lang must be 'en' or 'fr' (received: ${LANG_CODE})"
+  if [[ "$LANG_CODE" != "en" ]]; then
+    log_error "French generation has been retired; only English (--lang en) is supported (received: ${LANG_CODE})"
     exit 1
   fi
   return 0
-}
-
-# Loads the list of items to synchronize from awesome-copilot-bundles.yml
-# for the given type (common + type-specific)
-get_bundle_elements() {
-  local type="$1" category="$2"
-  local config="${BOOTSTRAP_DIR}/config/awesome-copilot-bundles.yml"
-
-  if ! command -v python3 &>/dev/null; then
-    log_warn "python3 not available — cannot parse the config YAML"
-    return 0
-  fi
-
-  python3 - "$config" "$type" "$category" << 'PYEOF'
-import sys, json
-
-try:
-    import yaml
-except ImportError:
-    # PyYAML not installed: empty output
-    sys.exit(0)
-
-config_file, proj_type, category = sys.argv[1], sys.argv[2], sys.argv[3]
-with open(config_file) as f:
-    data = yaml.safe_load(f)
-
-# Combine common and type-specific
-results = []
-for scope in ['common', proj_type]:
-    items = data.get(scope if scope == 'common' else f'bundles.{proj_type}', {})
-    if scope == 'common':
-        items = data.get('common', {})
-    else:
-        items = data.get('bundles', {}).get(proj_type, {})
-
-    for item in items.get(category, []):
-        if isinstance(item, dict):
-            if not item.get('optional', False):
-                results.append(item.get('name', ''))
-        elif isinstance(item, str):
-            results.append(item)
-
-for r in results:
-    if r:
-        print(r)
-PYEOF
 }
 
 # Synchronizes instructions from governance into the project
@@ -262,6 +216,32 @@ sync_methodology() {
     copy_if_not_exists "${src}/agents/prd-generator.agent.md" "${DEST_DIR}/.github/agents/prd-generator.agent.md" || true
 }
 
+# Synchronizes the sequential Claude Code team kit (ADR-0005) from governance.
+# Common to all project types. Never overwrites: a project's tuned .ai/orchestration.yaml,
+# role prompts or CLAUDE.md must survive a re-sync.
+sync_dev_factory() {
+  log_section "Synchronizing the dev factory (Hermes + sequential Claude Code team)"
+  local src="${GOVERNANCE_DIR}/dev-factory/project-template"
+
+  if [[ ! -d "$src" ]]; then
+    log_warn "Missing dev-factory/project-template directory: $src"
+    return
+  fi
+
+  local project_name="${PROJECT_NAME:-$(basename "$DEST_DIR")}"
+  if [[ -f "${DEST_DIR}/CLAUDE.md" ]]; then
+    log_skip "${DEST_DIR}/CLAUDE.md"
+  else
+    write_template "${src}/CLAUDE.md" "${DEST_DIR}/CLAUDE.md" "PROJECT_NAME=${project_name}"
+  fi
+
+  local rel
+  while IFS= read -r rel; do
+    [[ "$rel" == "CLAUDE.md" ]] && continue
+    copy_if_not_exists "${src}/${rel}" "${DEST_DIR}/${rel}"
+  done < <(cd "$src" && find . -type f -not -path '*/__pycache__/*' -not -name '*.pyc' | sed 's|^\./||' | sort)
+}
+
 # Synchronizes standard templates from governance
 sync_templates() {
   log_section "Synchronizing standard templates"
@@ -303,6 +283,7 @@ main() {
   sync_templates
   sync_hermes
   sync_methodology
+  sync_dev_factory
 
   log_success "Governance synchronization complete"
 }
