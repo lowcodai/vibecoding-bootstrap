@@ -40,6 +40,10 @@ for f in CLAUDE.md .claude/settings.json .ai/orchestration.yaml .ai/.gitignore \
   check "installed: $f" "[[ -f '${TMPDIR}/${f}' ]]"
 done
 check "docs/plans/README.md installed (ADR-0006)" "[[ -f '${TMPDIR}/docs/plans/README.md' ]]"
+for f in docs/operations/README.md docs/operations/CURRENT.md docs/adr/README.md docs/runbooks/README.md; do
+  check "docs skeleton from kit: $f" "[[ -f '${TMPDIR}/${f}' ]]"
+done
+check "no .hermes.md written (ADR-0007)" "[[ ! -f '${TMPDIR}/.hermes.md' ]]"
 check "orchestrate.py is executable" "[[ -x '${TMPDIR}/scripts/orchestrate.py' ]]"
 check "hooks are executable" "[[ -x '${TMPDIR}/.claude/hooks/tool_guardian.py' && -x '${TMPDIR}/.claude/hooks/secrets_scanner.py' ]]"
 check "settings.json wires the hooks" "grep -q 'tool_guardian.py' '${TMPDIR}/.claude/settings.json' && grep -q 'secrets_scanner.py' '${TMPDIR}/.claude/settings.json'"

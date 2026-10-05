@@ -1,8 +1,12 @@
-# Runbook — Aligning an existing repo on vibecoding governance + the Hermes contract
+# Runbook — Aligning an existing repo on vibecoding governance
 
 **Scope:** any `lowcodai/*` repo you want to bring in line with the
-`vibecoding-copilot-governance` structure (Copilot instructions/hooks/agents) and the Hermes
-continuity contract (`.hermes.md` + `docs/operations/{CURRENT,HANDOFF,ACTIVITY}.md`).
+`vibecoding-copilot-governance` structure (Copilot instructions/hooks/agents) and the
+agent-neutral project kit (`AGENTS.md` § Continuity, `docs/{prd,adr,plans,runbooks,operations}/`,
+`.ai/`, `.claude/`, `scripts/orchestrate.py`).
+**Updated 2026-10-05 for ADR-0007:** `.hermes.md` is no longer shipped. If the target repo has
+one, `sync-governance.sh` flags it as obsolete; review it, keep any project-specific note in
+`AGENTS.md`, then delete it. Hermes-specific rules live in governance `adapters/hermes/`.
 **Audience:** Arcane (execution) + Capitaine (review/validation).
 **Origin:** actually applied on 2026-09-14 to 6 repos (governance, bootstrap, 4
 templates, dgx-spark-V2, llmwiki) + HermesVPS2 itself. See `HermesVPS2/BACKLOG.md`
@@ -46,7 +50,7 @@ DRY_RUN=true ./scripts/sync-governance.sh \
 ```
 
 Read the output: it must list what **would** be created (`instructions/`, `hooks/`,
-`agents/`, `.hermes.md`, `docs/operations/{CURRENT,HANDOFF,ACTIVITY}.md`, `templates/`)
+`agents/`, `docs/operations/{README,CURRENT,HANDOFF,ACTIVITY}.md`, `.ai/`, `.claude/`, `templates/`)
 without writing anything. If the target repo's `docs/operations/*.md` files already exist
 and are dated/in use, verify that they show up as `[SKIP]` and not `[CREATE]`.
 
@@ -91,8 +95,8 @@ cd ../<repo-to-align>
 git status --short          # must show ONLY new files (A/??), no M
                              # on an already-dated/in-use docs/operations/*.md file
 ls docs/operations/          # CURRENT.md HANDOFF.md ACTIVITY.md must be present
-grep -n "^| \`" .hermes.md   # the model → context-threshold table must appear
-                             # (Qwen3.8-27B-NVFP4 / Sonnet 5 / GPT-5.6 Sol)
+grep -n "^## Continuity" AGENTS.md   # rulebook with the Continuity section (regenerate if absent)
+test ! -f .hermes.md || echo "obsolete .hermes.md still present (ADR-0007)"
 ```
 
 If an existing dated `docs/operations/*.md` file shows up as `M` (modified) rather than
@@ -104,8 +108,8 @@ was not respected or that a regression bug has reappeared.
 ## Step 5 — Commit + push, then a real remote verification
 
 ```bash
-git add .hermes.md docs/operations/ instructions/ hooks/ agents/ 2>/dev/null
-git commit -m "feat(hermes): Hermes continuity contract + Copilot governance (aligned with vibecoding-copilot-governance)"
+git add docs/ .ai/ .claude/ scripts/orchestrate.py CLAUDE.md instructions/ hooks/ agents/ 2>/dev/null
+git commit -m "chore: align with vibecoding-copilot-governance (agent-neutral kit, ADR-0007)"
 git push origin main
 ```
 
@@ -135,7 +139,7 @@ one if this repo falls outside the initial batch of ticket `#6`).
 - [ ] Dry-run executed and read before the actual run
 - [ ] `--extend-only` used (never a bare run on a repo with existing content)
 - [ ] `git status --short` clean after sync — no dated file overwritten
-- [ ] Model → context-threshold table present in `.hermes.md`
+- [ ] `AGENTS.md` has its Continuity section; no `.hermes.md` left (ADR-0007)
 - [ ] Commit + push done
 - [ ] Local SHA == `origin/main` SHA verified via `git fetch` (not assumed)
 - [ ] `HermesVPS2/CHANGELOG.md` and `BACKLOG.md` updated with the actual SHA
@@ -149,6 +153,5 @@ one if this repo falls outside the initial batch of ticket `#6`).
 - Never run `sync-governance.sh` without `--extend-only` on a repo that already contains
   active notes in `docs/operations/` — without this flag, the default behavior has not
   been validated for preserving existing content.
-- The model → context-threshold table (`.hermes.md`) should be revised if providers
-  silently change their context windows, or if Capitaine changes their 3 reference
-  models (Qwen3.8-27B-NVFP4 default / Sonnet 5 / GPT-5.6 Sol for heavy reasoning).
+- The model → context-threshold table now lives in governance `adapters/hermes/HERMES.md`
+  (installed in Hermes' environment); revise it there if gateways or reference models change.
