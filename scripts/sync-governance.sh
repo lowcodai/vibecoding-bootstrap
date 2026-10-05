@@ -141,7 +141,7 @@ sync_agents() {
     copy_if_not_exists "${src}/adr-generator.agent.md" "${dest}/adr-generator.agent.md" || true
 
   # Universal agent: Runbook generator (ADR-0004 — executes downstream of an accepted ADR,
-  # designed for hermes-solo execution on the local model by default)
+  # designed for single-agent execution on the local model by default)
   [[ -f "${src}/runbook-generator.agent.md" ]] && \
     copy_if_not_exists "${src}/runbook-generator.agent.md" "${dest}/runbook-generator.agent.md" || true
 
@@ -159,37 +159,16 @@ sync_agents() {
   esac
 }
 
-# Synchronizes the Hermes continuity contract (ADR-0021) from governance.
-# Common to all project types — context continuity is not
-# specific to base|infra|ai|app.
-sync_hermes() {
-  log_section "Synchronizing the Hermes continuity contract"
-  local src="${GOVERNANCE_DIR}/hermes"
-
-  if [[ ! -d "$src" ]]; then
-    log_warn "Missing hermes/ directory: $src"
-    return
-  fi
-
-  # .hermes.md — project name substitution (PROJECT_NAME derived from DEST_DIR unless
-  # overridden via --project-name). The model → context-threshold mapping table
-  # (Qwen3.8-27B-NVFP4/Sonnet 5/GPT-5.6 Sol) is embedded as-is from the source — keep it
-  # in sync with governance/hermes/.hermes.md if the models used change.
-  local project_name="${PROJECT_NAME:-$(basename "$DEST_DIR")}"
+# ADR-0007: projects are agent-neutral. The continuity rules are in AGENTS.md and the
+# docs/operations/ skeleton comes with sync_dev_factory; Hermes-specific rules live in governance
+# adapters/hermes/ and are installed in Hermes' environment, never in projects.
+# An existing .hermes.md is left in place (it may hold local edits) but flagged as obsolete.
+check_obsolete_agent_files() {
   if [[ -f "${DEST_DIR}/.hermes.md" ]]; then
-    log_skip "${DEST_DIR}/.hermes.md"
-  else
-    write_template "${src}/.hermes.md" "${DEST_DIR}/.hermes.md" "PROJECT_NAME=${project_name}"
+    log_warn "${DEST_DIR}/.hermes.md is obsolete (ADR-0007): continuity rules are in AGENTS.md § Continuity," \
+      "Hermes-specific rules in vibecoding-copilot-governance/adapters/hermes/. Delete it once reviewed."
   fi
-
-  # docs/operations/ skeleton — copied only once, never overwritten (copy_if_not_exists):
-  # a CURRENT.md already in use must never be replaced by the empty skeleton.
-  local ops_dest="${DEST_DIR}/docs/operations"
-  run_cmd mkdir -p "$ops_dest"
-  for f in CURRENT.md HANDOFF.md ACTIVITY.md; do
-    [[ -f "${src}/docs-operations-templates/${f}" ]] && \
-      copy_if_not_exists "${src}/docs-operations-templates/${f}" "${ops_dest}/${f}" || true
-  done
+  return 0
 }
 
 # Synchronizes the PRD/ADR/Plan/Runbook methodology from governance.
@@ -198,15 +177,9 @@ sync_methodology() {
   log_section "Synchronizing the PRD/ADR/Plan/Runbook methodology"
   local src="${GOVERNANCE_DIR}"
 
-  run_cmd mkdir -p "${DEST_DIR}/docs/prd" "${DEST_DIR}/docs/adr" "${DEST_DIR}/docs/runbooks" \
-    "${DEST_DIR}/docs/methodology"
+  # The docs/{prd,adr,plans,runbooks,operations} skeleton comes with sync_dev_factory (ADR-0007).
+  run_cmd mkdir -p "${DEST_DIR}/docs/methodology"
 
-  [[ -f "${src}/hermes/docs-prd-templates/README.md" ]] && \
-    copy_if_not_exists "${src}/hermes/docs-prd-templates/README.md" "${DEST_DIR}/docs/prd/README.md" || true
-  [[ -f "${src}/hermes/docs-adr-templates/README.md" ]] && \
-    copy_if_not_exists "${src}/hermes/docs-adr-templates/README.md" "${DEST_DIR}/docs/adr/README.md" || true
-  [[ -f "${src}/hermes/docs-runbook-templates/README.md" ]] && \
-    copy_if_not_exists "${src}/hermes/docs-runbook-templates/README.md" "${DEST_DIR}/docs/runbooks/README.md" || true
   [[ -f "${src}/docs/methodology/PRD-ADR-PLAN-RUNBOOK-WORKFLOW.md" ]] && \
     copy_if_not_exists "${src}/docs/methodology/PRD-ADR-PLAN-RUNBOOK-WORKFLOW.md" \
       "${DEST_DIR}/docs/methodology/PRD-ADR-PLAN-RUNBOOK-WORKFLOW.md" || true
@@ -220,7 +193,7 @@ sync_methodology() {
 # Common to all project types. Never overwrites: a project's tuned .ai/orchestration.yaml,
 # role prompts or CLAUDE.md must survive a re-sync.
 sync_dev_factory() {
-  log_section "Synchronizing the dev factory (Hermes + sequential Claude Code team)"
+  log_section "Synchronizing the dev factory (agent-neutral kit + docs skeleton)"
   local src="${GOVERNANCE_DIR}/dev-factory/project-template"
 
   if [[ ! -d "$src" ]]; then
@@ -281,7 +254,7 @@ main() {
   sync_hooks
   sync_agents
   sync_templates
-  sync_hermes
+  check_obsolete_agent_files
   sync_methodology
   sync_dev_factory
 

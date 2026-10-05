@@ -149,12 +149,48 @@ EOF
   esac
 }
 
+# Type-specific rows of the AGENTS.md repository map (directories created by apply_<type>_files)
+agents_md_type_map() {
+  case "$TEMPLATE_TYPE" in
+    infra) cat << 'EOF'
+| `ansible/` | Inventory, playbooks and roles (idempotent) |
+| `docker/` | Images and compose files (pinned by digest) |
+| `monitoring/` | Dashboards and alert rules |
+| `cmdb/` | Configuration inventory |
+EOF
+    ;;
+    ai) cat << 'EOF'
+| `agents/` | Agent definitions |
+| `prompts/` | Versioned prompts |
+| `mcp/` | MCP servers and configuration |
+| `rag/` | Retrieval pipelines |
+| `llm-wiki/` | Knowledge base |
+EOF
+    ;;
+    app) cat << 'EOF'
+| `src/` | Application source |
+| `tests/` | Automated tests |
+| `public/` | Static assets |
+EOF
+    ;;
+    m365) cat << 'EOF'
+| `appPackage/` | Teams app, declarative agent and MCP plugin manifests |
+| `env/` | Agents Toolkit environment config — never secrets |
+EOF
+    ;;
+    *) cat << 'EOF'
+| <!-- TODO --> | <!-- source and test directories --> |
+EOF
+    ;;
+  esac
+}
+
 generate_agents_md() {
   local dest="$1"
   cat > "$dest" << 'EOF'
 # AGENTS.md — {{REPO_NAME}}
 
-Rulebook for every agent (Hermes, Claude Code, Copilot) and every human contributor. Read it in
+Rulebook for every agent (orchestrator, Claude Code, Copilot) and every human contributor. Read it in
 full before changing anything. An accepted ADR (`docs/adr/`) overrides this file: if you find a
 conflict, stop and report it. Keep this file short (< ~1,500 tokens) — details belong in ADRs.
 
@@ -182,12 +218,15 @@ orchestrator runs those commands to decide whether a task passes.
 |------|---------|
 | `docs/prd/` | Intent: problem, non-goals, success criteria |
 | `docs/adr/` | Decisions, including `execution_mode` — binding |
-| `docs/runbooks/` | Operational procedures executed by Hermes |
-| `docs/operations/` | Hermes continuity state (`CURRENT`, `HANDOFF`, `ACTIVITY`) |
+| `docs/plans/` | Delivery plans: epics, ordered tasks and runbooks (ADR-0006) |
+| `docs/runbooks/` | Operational procedures executed by the orchestrator |
+| `docs/operations/` | Continuity state for long-running agents (`CURRENT`, `HANDOFF`, `ACTIVITY`) |
 | `.ai/tasks/` | Task contracts (one per unit of code work) |
 | `.ai/roles/`, `.ai/orchestration.yaml` | Team configuration — owned by humans |
 | `.ai/runs/` | Run state and logs — owned by `scripts/orchestrate.py` |
-| <!-- TODO --> | <!-- source, tests, infra directories --> |
+EOF
+  agents_md_type_map >> "$dest"
+  cat >> "$dest" << 'EOF'
 
 ## How work flows
 
@@ -198,7 +237,7 @@ orchestrator runs those commands to decide whether a task passes.
 
 | Role | Does | Never |
 |------|------|-------|
-| Hermes | frames work, writes task contracts, runs the orchestrator, arbitrates, reports | writes code, merges |
+| Orchestrator (Hermes today) | frames work, writes plans and task contracts, runs `orchestrate.py`, arbitrates, reports | writes code, merges |
 | DEV | implements, writes tests, runs lint/tests, commits locally | pushes, merges, leaves the scope |
 | REVIEW | judges the diff against ACs and ADRs | edits files |
 | TEST | judges validation results against ACs | edits files, overrides a failing command |
@@ -217,7 +256,7 @@ orchestrator runs those commands to decide whether a task passes.
 - Run lint and tests and report their real output before declaring work done.
 - Leave the worktree clean; record any gap or risk in your result.
 
-**Ask first** — stop, report, let Hermes escalate to a human
+**Ask first** — stop, report, let the orchestrator escalate to a human
 - A decision no accepted ADR covers, or an ADR that contradicts the code.
 - New dependency, database schema or public API/contract change, CI workflow change.
 - Anything touching authentication, secrets, access control, production, public
@@ -234,6 +273,20 @@ orchestrator runs those commands to decide whether a task passes.
 - Every acceptance criterion is met and covered by a test.
 - Lint and tests pass (real output, not assumed); the worktree is clean.
 - `CHANGELOG.md` updated if the change is user-visible; docs/ADR updated if behaviour changes.
+
+## Continuity
+
+For any agent working across long or interrupted sessions (ADR-0007). State lives on disk, never
+only in a chat: `docs/operations/CURRENT.md` (active work), `HANDOFF.md` (exit state),
+`ACTIVITY.md` (append-only log) — see `docs/operations/README.md`.
+
+- **Checkpoint** (update `CURRENT.md`, append to `ACTIVITY.md`) after a completed unit of work or
+  validation, before a destructive or large change, before delegating, after a tool failure that
+  changes the plan, and at 55% context.
+- **Context pressure:** at 65% finish the current step only; at 75% wrap up (tracking files,
+  non-destructive checks, commit); at 82% write `HANDOFF.md` and stop.
+- **Never report work as done "to be documented later":** if tracking files are not updated, the
+  work is not done.
 
 ## Type-specific rules ({{TEMPLATE_TYPE}})
 
@@ -256,7 +309,7 @@ generate_base_files_inline() {
     local base_files=(
       "README.md" "CHANGELOG.md" "BACKLOG.md" "ROADMAP.md" "AGENTS.md"
       "CONTRIBUTING.md" "SECURITY.md" "SUPPORT.md" "LICENSE"
-      "docs/adr/.gitkeep" "docs/architecture/.gitkeep" "docs/runbooks/.gitkeep"
+      "docs/adr/.gitkeep" "docs/architecture/.gitkeep" "docs/plans/.gitkeep" "docs/runbooks/.gitkeep"
     )
     for f in "${base_files[@]}"; do
       log_dry "Create: ${DEST_DIR}/${f}"
@@ -290,6 +343,7 @@ generate_base_files_inline() {
 
 - [Architecture](docs/architecture/)
 - [ADR](docs/adr/)
+- [Plans](docs/plans/)
 - [Runbooks](docs/runbooks/)
 - [BACKLOG](BACKLOG.md)
 - [ROADMAP](ROADMAP.md)
@@ -332,21 +386,18 @@ EOF
     cat > "${DEST_DIR}/BACKLOG.md" << 'EOF'
 # Backlog
 
+Index of epics (ADR-0006). The breakdown of an epic into ordered tasks and runbooks lives in its
+plan (`docs/plans/`); task details live in `.ai/tasks/`. Keep one line per epic.
+
 ## Epics
 
-| ID | Title | Priority | Status |
-|----|-------|----------|--------|
-| E1 | Initialization | High | In progress |
-
-## Stories
-
-| ID | Epic | Title | Priority | Status |
-|----|------|-------|----------|--------|
-| S1 | E1 | Initial project setup | High | Done |
+| ID | Outcome | Priority | Status | Plan |
+|----|---------|----------|--------|------|
+| E1 | Project initialized from the template | High | Done | — |
 
 ## Icebox
 
-> Issues not yet planned
+> Ideas not yet planned
 EOF
     log_success "Created: BACKLOG.md"
   else
@@ -374,8 +425,8 @@ EOF
     log_skip "ROADMAP.md"
   fi
 
-  # AGENTS.md — the project rulebook read by every agent (Hermes, Claude Code DEV, Copilot)
-  # and every human contributor. Keep it under ~1,500 tokens: Hermes and DEV read it in full
+  # AGENTS.md — the project rulebook read by every agent (orchestrator, Claude Code DEV, Copilot)
+  # and every human contributor. Keep it under ~1,500 tokens: the orchestrator and DEV read it in full
   # on every task (ADR-0005). REVIEW/TEST runs do not load it (--bare).
   if [[ ! -f "${DEST_DIR}/AGENTS.md" ]]; then
     generate_agents_md "${DEST_DIR}/AGENTS.md"
@@ -501,7 +552,7 @@ EOF
   fi
 
   # Directories with .gitkeep
-  for dir in docs/adr docs/architecture docs/runbooks; do
+  for dir in docs/adr docs/architecture docs/plans docs/runbooks; do
     ensure_dir_with_gitkeep "${DEST_DIR}/${dir}"
   done
 }
