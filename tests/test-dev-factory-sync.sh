@@ -39,6 +39,7 @@ for f in CLAUDE.md .claude/settings.json .ai/orchestration.yaml .ai/.gitignore \
          scripts/orchestrate.py .claude/hooks/tool_guardian.py .claude/hooks/secrets_scanner.py; do
   check "installed: $f" "[[ -f '${TMPDIR}/${f}' ]]"
 done
+check "docs/plans/README.md installed (ADR-0006)" "[[ -f '${TMPDIR}/docs/plans/README.md' ]]"
 check "orchestrate.py is executable" "[[ -x '${TMPDIR}/scripts/orchestrate.py' ]]"
 check "hooks are executable" "[[ -x '${TMPDIR}/.claude/hooks/tool_guardian.py' && -x '${TMPDIR}/.claude/hooks/secrets_scanner.py' ]]"
 check "settings.json wires the hooks" "grep -q 'tool_guardian.py' '${TMPDIR}/.claude/settings.json' && grep -q 'secrets_scanner.py' '${TMPDIR}/.claude/settings.json'"

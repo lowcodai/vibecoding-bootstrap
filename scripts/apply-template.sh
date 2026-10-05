@@ -218,6 +218,7 @@ orchestrator runs those commands to decide whether a task passes.
 |------|---------|
 | `docs/prd/` | Intent: problem, non-goals, success criteria |
 | `docs/adr/` | Decisions, including `execution_mode` — binding |
+| `docs/plans/` | Delivery plans: epics, ordered tasks and runbooks (ADR-0006) |
 | `docs/runbooks/` | Operational procedures executed by Hermes |
 | `docs/operations/` | Hermes continuity state (`CURRENT`, `HANDOFF`, `ACTIVITY`) |
 | `.ai/tasks/` | Task contracts (one per unit of code work) |
@@ -294,7 +295,7 @@ generate_base_files_inline() {
     local base_files=(
       "README.md" "CHANGELOG.md" "BACKLOG.md" "ROADMAP.md" "AGENTS.md"
       "CONTRIBUTING.md" "SECURITY.md" "SUPPORT.md" "LICENSE"
-      "docs/adr/.gitkeep" "docs/architecture/.gitkeep" "docs/runbooks/.gitkeep"
+      "docs/adr/.gitkeep" "docs/architecture/.gitkeep" "docs/plans/.gitkeep" "docs/runbooks/.gitkeep"
     )
     for f in "${base_files[@]}"; do
       log_dry "Create: ${DEST_DIR}/${f}"
@@ -328,6 +329,7 @@ generate_base_files_inline() {
 
 - [Architecture](docs/architecture/)
 - [ADR](docs/adr/)
+- [Plans](docs/plans/)
 - [Runbooks](docs/runbooks/)
 - [BACKLOG](BACKLOG.md)
 - [ROADMAP](ROADMAP.md)
@@ -370,21 +372,18 @@ EOF
     cat > "${DEST_DIR}/BACKLOG.md" << 'EOF'
 # Backlog
 
+Index of epics (ADR-0006). The breakdown of an epic into ordered tasks and runbooks lives in its
+plan (`docs/plans/`); task details live in `.ai/tasks/`. Keep one line per epic.
+
 ## Epics
 
-| ID | Title | Priority | Status |
-|----|-------|----------|--------|
-| E1 | Initialization | High | In progress |
-
-## Stories
-
-| ID | Epic | Title | Priority | Status |
-|----|------|-------|----------|--------|
-| S1 | E1 | Initial project setup | High | Done |
+| ID | Outcome | Priority | Status | Plan |
+|----|---------|----------|--------|------|
+| E1 | Project initialized from the template | High | Done | — |
 
 ## Icebox
 
-> Issues not yet planned
+> Ideas not yet planned
 EOF
     log_success "Created: BACKLOG.md"
   else
@@ -539,7 +538,7 @@ EOF
   fi
 
   # Directories with .gitkeep
-  for dir in docs/adr docs/architecture docs/runbooks; do
+  for dir in docs/adr docs/architecture docs/plans docs/runbooks; do
     ensure_dir_with_gitkeep "${DEST_DIR}/${dir}"
   done
 }

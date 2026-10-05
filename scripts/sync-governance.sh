@@ -198,13 +198,15 @@ sync_methodology() {
   log_section "Synchronizing the PRD/ADR/Plan/Runbook methodology"
   local src="${GOVERNANCE_DIR}"
 
-  run_cmd mkdir -p "${DEST_DIR}/docs/prd" "${DEST_DIR}/docs/adr" "${DEST_DIR}/docs/runbooks" \
+  run_cmd mkdir -p "${DEST_DIR}/docs/prd" "${DEST_DIR}/docs/adr" "${DEST_DIR}/docs/plans" "${DEST_DIR}/docs/runbooks" \
     "${DEST_DIR}/docs/methodology"
 
   [[ -f "${src}/hermes/docs-prd-templates/README.md" ]] && \
     copy_if_not_exists "${src}/hermes/docs-prd-templates/README.md" "${DEST_DIR}/docs/prd/README.md" || true
   [[ -f "${src}/hermes/docs-adr-templates/README.md" ]] && \
     copy_if_not_exists "${src}/hermes/docs-adr-templates/README.md" "${DEST_DIR}/docs/adr/README.md" || true
+  [[ -f "${src}/hermes/docs-plan-templates/README.md" ]] && \
+    copy_if_not_exists "${src}/hermes/docs-plan-templates/README.md" "${DEST_DIR}/docs/plans/README.md" || true
   [[ -f "${src}/hermes/docs-runbook-templates/README.md" ]] && \
     copy_if_not_exists "${src}/hermes/docs-runbook-templates/README.md" "${DEST_DIR}/docs/runbooks/README.md" || true
   [[ -f "${src}/docs/methodology/PRD-ADR-PLAN-RUNBOOK-WORKFLOW.md" ]] && \

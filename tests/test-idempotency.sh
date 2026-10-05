@@ -46,7 +46,7 @@ checksum_after=$(md5 -q "${TMPDIR_BASE}/README.md" 2>/dev/null || md5sum "${TMPD
   pass "README.md unchanged after extend-only" || fail "README.md modified after extend-only"
 
 # Check required directories
-for dir in docs/adr docs/architecture docs/runbooks .github/workflows .github/ISSUE_TEMPLATE; do
+for dir in docs/adr docs/architecture docs/plans docs/runbooks .github/workflows .github/ISSUE_TEMPLATE; do
   [[ -d "${TMPDIR_BASE}/${dir}" ]] && pass "Directory present: $dir" || fail "Directory missing: $dir"
 done
 
