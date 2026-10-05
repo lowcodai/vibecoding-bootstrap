@@ -153,5 +153,7 @@ one if this repo falls outside the initial batch of ticket `#6`).
 - Never run `sync-governance.sh` without `--extend-only` on a repo that already contains
   active notes in `docs/operations/` — without this flag, the default behavior has not
   been validated for preserving existing content.
-- The model → context-threshold table now lives in governance `adapters/hermes/HERMES.md`
-  (installed in Hermes' environment); revise it there if gateways or reference models change.
+- The model → context-threshold table now lives in governance
+  `adapters/hermes/skills/sequential-coding-team/references/hermes-operating-rules.md` (installed
+  with the skill), and the context window in a delimited section of Arcane's `SOUL.md`; revise
+  both if gateways or reference models change. Never overwrite `SOUL.md` (agent identity).
