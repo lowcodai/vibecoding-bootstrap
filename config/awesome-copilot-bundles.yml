@@ -241,7 +241,7 @@ bundles:
         optional: true
     plugins:
       - name: mcp-m365-copilot
-        description: "MCP + Microsoft 365 Copilot toolchain — installs into the Copilot CLI's global environment, not the repo; run on the host that actually executes the agent (e.g. Arcane's VPS2), not necessarily where this bundle was applied"
+        description: "MCP + Microsoft 365 Copilot toolchain — installs into the Copilot CLI's global environment, not the repo; run on the host that actually executes the agent (e.g. Arcane's host, the Mac mini 3M6), not necessarily where this bundle was applied"
     instructions:
       - name: declarative-agents-microsoft365
         file: declarative-agents-microsoft365.instructions.md

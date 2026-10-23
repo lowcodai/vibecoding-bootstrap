@@ -8,9 +8,9 @@ agent-neutral project kit (`AGENTS.md` § Continuity, `docs/{prd,adr,plans,runbo
 one, `sync-governance.sh` flags it as obsolete; review it, keep any project-specific note in
 `AGENTS.md`, then delete it. Hermes-specific rules live in governance `adapters/hermes/`.
 **Audience:** Arcane (execution) + Capitaine (review/validation).
-**Origin:** actually applied on 2026-09-14 to 6 repos (governance, bootstrap, 4
-templates, dgx-spark-V2, llmwiki) + HermesVPS2 itself. See `HermesVPS2/BACKLOG.md`
-ticket `#6` and `CHANGELOG.md` (2026-09-14) for the history of reference commits.
+**Origin:** first applied on 2026-09-14 to the governance, bootstrap and template repos,
+dgx-spark-V2 and llmwiki. Arcane now runs on 3M6 (`lowcodai/arcane3m6`); each aligned repo
+records its own alignment (Step 6).
 
 ---
 
@@ -131,11 +131,11 @@ git status --short   # must be empty (working tree clean)
 
 ---
 
-## Step 6 — Document in HermesVPS2
+## Step 6 — Document in the aligned repo
 
-Add a `CHANGELOG.md` entry (format `[YYYY-MM-DD] feat — ...`) referencing the SHA of the
-commit produced in Step 5, and update the corresponding `BACKLOG.md` ticket (or open a new
-one if this repo falls outside the initial batch of ticket `#6`).
+In the aligned repo itself: a `CHANGELOG.md` entry referencing the SHA of the commit produced in
+Step 5, and a checkpoint in `docs/operations/ACTIVITY.md` (its `BACKLOG.md` too, if it tracks the
+alignment as a ticket).
 
 ---
 
@@ -147,7 +147,7 @@ one if this repo falls outside the initial batch of ticket `#6`).
 - [ ] `AGENTS.md` has its Continuity section; no `.hermes.md` left (ADR-0007)
 - [ ] Commit + push done
 - [ ] Local SHA == `origin/main` SHA verified via `git fetch` (not assumed)
-- [ ] `HermesVPS2/CHANGELOG.md` and `BACKLOG.md` updated with the actual SHA
+- [ ] The aligned repo's `CHANGELOG.md` and `docs/operations/ACTIVITY.md` updated with the actual SHA
 
 ## Known pitfalls
 
