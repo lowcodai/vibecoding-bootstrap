@@ -9,7 +9,7 @@
 #   -v, --visibility <public|private> GitHub visibility (default: private)
 #   -o, --org <org>                   GitHub organization (optional)
 #   -d, --output-dir <path>           Destination directory (default: ../<name>)
-#       --autonomy <level>            supervised (default) | branch | trusted (ADR-0008)
+#       --autonomy <level>            supervised (default) | branch | trusted | yolo (ADR-0008, ADR-0009)
 #       --no-github                   Do not create the repo on GitHub
 #       --dry-run                     Simulation mode without changes
 #       --verbose                     Detailed logging
@@ -76,6 +76,8 @@ Options:
                                                   curl/wget and read-only gh allowed
                                       trusted     branch + agents merge their own PR once checks
                                                   are green (after human approval when orchestrated)
+                                      yolo        no human approval: agents push, open the PR, fix
+                                                  until CI is green and merge it (ADR-0009)
                                     Change it later: sync-governance.sh --autonomy <level>
       --no-github                   No GitHub creation (local only)
       --dry-run                     Simulation: shows actions without performing them
@@ -140,8 +142,8 @@ parse_args() {
 
 # ─── Input validation ──────────────────────────────────────────────────────────
 validate_inputs() {
-  if [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted)$ ]]; then
-    log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted)"
+  if [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted|yolo)$ ]]; then
+    log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted|yolo)"
     exit 1
   fi
   local valid_types=("base" "infra" "ai" "app" "m365")

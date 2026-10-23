@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # apply-template.sh — Copies and instantiates a template into the target directory
 # Usage: ./scripts/apply-template.sh --type <base|infra|ai|app|m365> --name <repo-name> --dest <dest-dir>
-#        [--autonomy <supervised|branch|trusted>]   (level rendered into AGENTS.md, ADR-0008)
+#        [--autonomy <supervised|branch|trusted|yolo>]   (level rendered into AGENTS.md, ADR-0008)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -42,8 +42,8 @@ parse_args() {
     esac
   done
 
-  if [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted)$ ]]; then
-    log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted)"
+  if [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted|yolo)$ ]]; then
+    log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted|yolo)"
     exit 1
   fi
 

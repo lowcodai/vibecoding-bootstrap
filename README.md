@@ -61,7 +61,7 @@ Check with:
   -v, --visibility <public|private> GitHub visibility (default: private)
   -o, --org <org>                   GitHub organization
   -d, --output-dir <path>           Destination directory
-      --autonomy <level>            supervised (default) | branch | trusted — agent autonomy (ADR-0008)
+      --autonomy <level>            supervised (default) | branch | trusted | yolo — agent autonomy (ADR-0008, ADR-0009)
       --no-github                   Local only (no gh repo create)
       --dry-run                     Simulation without changes
       --verbose                     Detailed logging
@@ -128,7 +128,9 @@ Each repo declares how far its agents may go in `.ai/autonomy.yaml` — `supervi
 commit locally only), `branch` (push the current non-`main` branch, draft PRs, curl/wget, read-only
 gh; orchestrated runs get their branch pushed and a draft PR opened by `orchestrate.py`) or `trusted`
 (`branch` + merge of one's own PR once checks are green; orchestrated runs are merged by
-`orchestrate.py` after human approval). Choose it at creation with `new-project.sh --autonomy`, change
+`orchestrate.py` after human approval) or `yolo` (no human approval: agents push, open the PR, fix
+until CI is green and merge it; orchestrated runs are merged by `orchestrate.py` on green CI, red CI
+goes back to DEV — ADR-0009). Choose it at creation with `new-project.sh --autonomy`, change
 it later with:
 
 ```bash

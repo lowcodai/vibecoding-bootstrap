@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sync-governance.sh — Synchronizes governance items from vibecoding-copilot-governance
 # Usage: ./scripts/sync-governance.sh --type <base|infra|ai|app|m365> --dest <dest-dir> [--autonomy <level>]
-#   --autonomy <supervised|branch|trusted>  set the repo's agent autonomy level (ADR-0008) and re-render
+#   --autonomy <supervised|branch|trusted|yolo>  set the repo's agent autonomy level (ADR-0008) and re-render
 #                                           the files it drives; without it, the existing level is kept.
 set -euo pipefail
 
@@ -41,8 +41,8 @@ parse_args() {
     log_error "--dest is required"
     exit 1
   fi
-  if [[ -n "$AUTONOMY" ]] && [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted)$ ]]; then
-    log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted)"
+  if [[ -n "$AUTONOMY" ]] && [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted|yolo)$ ]]; then
+    log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted|yolo)"
     exit 1
   fi
   if [[ "$LANG_CODE" != "en" ]]; then
