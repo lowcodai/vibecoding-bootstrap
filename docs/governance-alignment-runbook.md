@@ -37,6 +37,11 @@ gh repo clone lowcodai/<repo-to-align>
 whether it was originally created with `new-project.sh`: `--extend-only` only adds what is
 missing, and never overwrites).
 
+To refresh the kit-owned files (`.claude/settings.json`, `.claude/hooks/*.py`,
+`scripts/orchestrate.py`) and set the agent autonomy level (ADR-0008), run `sync-governance.sh`
+**without** `--extend-only`, with `--autonomy <supervised|branch|trusted>` (omit it to keep the
+repo's level; a repo synced before ADR-0008 starts at `supervised`). Tuned files are kept.
+
 ---
 
 ## Step 2 — Mandatory dry-run before any write

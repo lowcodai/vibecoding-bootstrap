@@ -9,6 +9,7 @@
 #   -v, --visibility <public|private> GitHub visibility (default: private)
 #   -o, --org <org>                   GitHub organization (optional)
 #   -d, --output-dir <path>           Destination directory (default: ../<name>)
+#       --autonomy <level>            supervised (default) | branch | trusted (ADR-0008)
 #       --no-github                   Do not create the repo on GitHub
 #       --dry-run                     Simulation mode without changes
 #       --verbose                     Detailed logging
@@ -46,6 +47,7 @@ NO_GITHUB=false
 NO_ADR=false
 NO_LABELS=false
 SKIP_AWESOME_COPILOT=false
+AUTONOMY="supervised"   # agent autonomy level of the new repo (ADR-0008)
 LANG_CODE="en"   # Only 'en' is supported. The flag is kept for CLI compatibility; French generation has been retired.
 
 # Counters for the final summary
@@ -67,6 +69,14 @@ Options:
   -v, --visibility <public|private> GitHub visibility (default: private)
   -o, --org <org>                   GitHub organization (optional)
   -d, --output-dir <path>           Destination directory (default: ../<name>)
+      --autonomy <level>            Agent autonomy level (ADR-0008), default: supervised
+                                      supervised  agents commit locally; humans push and merge;
+                                                  no curl, wget or gh
+                                      branch      agents push their own branch and open draft PRs;
+                                                  curl/wget and read-only gh allowed
+                                      trusted     branch + agents merge their own PR once checks
+                                                  are green (after human approval when orchestrated)
+                                    Change it later: sync-governance.sh --autonomy <level>
       --no-github                   No GitHub creation (local only)
       --dry-run                     Simulation: shows actions without performing them
       --verbose                     Detailed logging
@@ -86,6 +96,9 @@ Examples:
 
   # Dry-run test
   ./scripts/new-project.sh -t ai -n test-ai --dry-run --verbose
+
+  # Repo whose agents may push their own branch
+  ./scripts/new-project.sh -t app -n my-app --autonomy branch
 
   # Add missing files to an existing project
   ./scripts/new-project.sh -t base -n my-project --extend-only --no-github
@@ -108,6 +121,7 @@ parse_args() {
       -v|--visibility)      VISIBILITY="$2"; shift 2 ;;
       -o|--org)             ORG="$2"; shift 2 ;;
       -d|--output-dir)      OUTPUT_DIR="$2"; shift 2 ;;
+      --autonomy)           AUTONOMY="${2:-}"; shift 2 ;;
       -l|--lang)            LANG_CODE="$2"; shift 2 ;;
       --no-github)          NO_GITHUB=true; shift ;;
       --dry-run)            DRY_RUN=true; shift ;;
@@ -126,6 +140,10 @@ parse_args() {
 
 # ─── Input validation ──────────────────────────────────────────────────────────
 validate_inputs() {
+  if [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted)$ ]]; then
+    log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted)"
+    exit 1
+  fi
   local valid_types=("base" "infra" "ai" "app" "m365")
   if [[ -n "$TEMPLATE_TYPE" ]]; then
     local valid=false
@@ -250,6 +268,7 @@ show_plan() {
   echo "  Repo name         : ${REPO_NAME}"
   echo "  Directory         : ${OUTPUT_DIR}"
   echo "  GitHub visibility : ${VISIBILITY}"
+  echo "  Agent autonomy    : ${AUTONOMY} (ADR-0008)"
   echo "  Create on GitHub  : $([[ "$NO_GITHUB" == "true" ]] && echo "No" || echo "Yes")"
   echo "  Dry-run mode      : ${DRY_RUN}"
   echo "  Extend-only mode  : ${EXTEND_ONLY}"
@@ -274,6 +293,7 @@ step_apply_template() {
     "--name" "$REPO_NAME"
     "--dest" "$OUTPUT_DIR"
     "--lang" "$LANG_CODE"
+    "--autonomy" "$AUTONOMY"
   )
   [[ "$DRY_RUN" == "true" ]]     && args+=("--dry-run")
   [[ "$VERBOSE" == "true" ]]     && args+=("--verbose")
@@ -290,6 +310,7 @@ step_sync_governance() {
     "--type" "$TEMPLATE_TYPE"
     "--dest" "$OUTPUT_DIR"
     "--lang" "$LANG_CODE"
+    "--autonomy" "$AUTONOMY"
   )
   [[ "$DRY_RUN" == "true" ]]     && args+=("--dry-run")
   [[ "$VERBOSE" == "true" ]]     && args+=("--verbose")

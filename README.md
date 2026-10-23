@@ -36,6 +36,9 @@ Check with:
 
 # Add missing files to an existing project
 ./scripts/new-project.sh --type infra --name my-infra --extend-only --no-github
+
+# Agents may push their own branch and open draft PRs (ADR-0008)
+./scripts/new-project.sh --type app --name my-app --autonomy branch
 ```
 
 ## Project types
@@ -58,6 +61,7 @@ Check with:
   -v, --visibility <public|private> GitHub visibility (default: private)
   -o, --org <org>                   GitHub organization
   -d, --output-dir <path>           Destination directory
+      --autonomy <level>            supervised (default) | branch | trusted — agent autonomy (ADR-0008)
       --no-github                   Local only (no gh repo create)
       --dry-run                     Simulation without changes
       --verbose                     Detailed logging
@@ -101,6 +105,7 @@ bash tests/test-dry-run.sh
 bash tests/test-idempotency.sh
 bash tests/test-extend-only.sh
 bash tests/test-dev-factory-sync.sh
+bash tests/test-autonomy.sh             # autonomy levels: creation, change, migration, fallback
 bash tests/test-template-agents-md.sh   # needs vibecoding-template-* clones next to this repo
 bash tests/test-template-dev-factory.sh # needs vibecoding-template-* clones next to this repo
 bash tests/test-template-governance-copies.sh  # same; governance copies + no .hermes.md (ADR-0007)
@@ -112,9 +117,27 @@ bash tests/test-template-governance-copies.sh  # same; governance copies + no .h
 `vibecoding-copilot-governance/dev-factory/project-template/`: `CLAUDE.md`, `.claude/settings.json`,
 `.claude/hooks/` (tool guardian and secrets scanner), `.ai/orchestration.yaml`,
 `.ai/tasks/TASK-template.md`, `.ai/roles/*.md` and
-`scripts/orchestrate.py`. Existing files are never overwritten, so a project's tuned
-`orchestration.yaml` survives re-syncs. Configure the gateway URLs and validation commands in
-`.ai/orchestration.yaml` after the first sync.
+`scripts/orchestrate.py`. Kit-owned files (`.claude/settings.json`, `.claude/hooks/*.py`,
+`scripts/orchestrate.py`) are refreshed on every sync; project-tuned files (`orchestration.yaml`,
+role prompts, `CLAUDE.md` outside its autonomy block, the secrets allowlist) are never overwritten.
+Configure the gateway URLs and validation commands in `.ai/orchestration.yaml` after the first sync.
+
+## Agent autonomy levels (ADR-0008)
+
+Each repo declares how far its agents may go in `.ai/autonomy.yaml` — `supervised` (default:
+commit locally only), `branch` (push the current non-`main` branch, draft PRs, curl/wget, read-only
+gh; orchestrated runs get their branch pushed and a draft PR opened by `orchestrate.py`) or `trusted`
+(`branch` + merge of one's own PR once checks are green; orchestrated runs are merged by
+`orchestrate.py` after human approval). Choose it at creation with `new-project.sh --autonomy`, change
+it later with:
+
+```bash
+./scripts/sync-governance.sh --type <type> --dest /path/to/repo --autonomy branch
+```
+
+This rewrites `.ai/autonomy.yaml` and re-renders `.claude/settings.json` and the autonomy blocks of
+`CLAUDE.md` and `AGENTS.md`; review the diff and merge it — the wider level applies only once it is on
+`main`. A missing or invalid level file means `supervised`.
 
 ## Security
 

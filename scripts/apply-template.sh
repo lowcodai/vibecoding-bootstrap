@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # apply-template.sh — Copies and instantiates a template into the target directory
 # Usage: ./scripts/apply-template.sh --type <base|infra|ai|app|m365> --name <repo-name> --dest <dest-dir>
+#        [--autonomy <supervised|branch|trusted>]   (level rendered into AGENTS.md, ADR-0008)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,6 +22,8 @@ REPO_NAME=""
 DEST_DIR=""
 DATE_TODAY="$(date +%Y-%m-%d)"
 LANG_CODE="en"   # Only 'en' is supported. The flag is kept for CLI compatibility; French generation has been retired.
+AUTONOMY="supervised"
+GOVERNANCE_DIR="${GOVERNANCE_DIR:-${VIBECODING_GOVERNANCE_DIR:-${BOOTSTRAP_DIR}/../vibecoding-copilot-governance}}"
 
 # ─── Argument parsing ─────────────────────────────────────────────────────────
 parse_args() {
@@ -34,9 +37,15 @@ parse_args() {
       --verbose)      VERBOSE=true; shift ;;
       --extend-only)  EXTEND_ONLY=true; shift ;;
       --force)        FORCE=true; shift ;;
+      --autonomy)     AUTONOMY="${2:-}"; shift 2 ;;
       *) log_error "Unknown argument: $1"; exit 1 ;;
     esac
   done
+
+  if [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted)$ ]]; then
+    log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted)"
+    exit 1
+  fi
 
   if [[ -z "$TEMPLATE_TYPE" ]]; then
     log_error "--type is required (base|infra|ai|app|m365)"
@@ -185,6 +194,26 @@ EOF
   esac
 }
 
+# Replaces {{AUTONOMY_BLOCK}} with the block rendered by governance's policy module (the single
+# source, ADR-0008). Without governance, empty markers are left for sync-governance.sh to fill.
+render_agents_autonomy() {
+  local dest="$1" block
+  [[ -f "$dest" ]] || return 0
+  local module="${GOVERNANCE_DIR}/dev-factory/project-template/.claude/hooks/autonomy.py"
+  if [[ -f "$module" ]] && block="$(python3 "$module" agents-block --level "$AUTONOMY")"; then
+    :
+  else
+    log_warn "autonomy.py not found (${module}): AGENTS.md gets empty autonomy markers, filled by sync-governance.sh"
+    block=$'<!-- autonomy:begin -->\n<!-- autonomy:end -->'
+  fi
+  BLOCK="$block" python3 - "$dest" <<'PYEOF2'
+import os, sys
+path = sys.argv[1]
+text = open(path).read()
+open(path, "w").write(text.replace("{{AUTONOMY_BLOCK}}", os.environ["BLOCK"]))
+PYEOF2
+}
+
 generate_agents_md() {
   local dest="$1"
   cat > "$dest" << 'EOF'
@@ -233,7 +262,8 @@ EOF
 1. Intent is written as a PRD, the technical choice as an ADR. No code without a decision.
 2. Code work is a task contract `.ai/tasks/TASK-NNNN.md`, run by `scripts/orchestrate.py`:
    DEV → REVIEW → TEST, one role at a time, on branch/worktree `agent/TASK-NNNN`.
-3. `READY_FOR_APPROVAL` → a human reviews and merges. Operations follow a Runbook instead.
+3. `READY_FOR_APPROVAL` → a human reviews and approves; who pushes and merges follows **Autonomy**.
+   Operations follow a Runbook instead.
 
 | Role | Does | Never |
 |------|------|-------|
@@ -241,7 +271,7 @@ EOF
 | DEV | implements, writes tests, runs lint/tests, commits locally | pushes, merges, leaves the scope |
 | REVIEW | judges the diff against ACs and ADRs | edits files |
 | TEST | judges validation results against ACs | edits files, overrides a failing command |
-| Human | decides ADRs, approves, merges | — |
+| Human | decides ADRs, approves, merges (see **Autonomy**) | — |
 
 ## Conventions
 
@@ -263,10 +293,12 @@ EOF
   infrastructure or recurring cost.
 
 **Never**
-- `git push`, `merge`, `rebase`, `reset --hard`, force operations, or commits on `main`.
+- Force operations, `rebase`, `reset --hard`, commits on `main`, or anything **Autonomy** does not allow.
 - Commit or read secrets (`.env*`, keys, tokens, credentials).
 - Skip, disable or weaken a test, a lint rule or a threshold to get green.
-- Edit `.ai/orchestration.yaml`, `.ai/roles/`, `.ai/runs/` or `.claude/` during a task.
+- Edit `.ai/autonomy.yaml`, `.ai/orchestration.yaml`, `.ai/roles/`, `.ai/runs/` or `.claude/` during a task.
+
+{{AUTONOMY_BLOCK}}
 
 ## Definition of done
 
@@ -431,6 +463,7 @@ EOF
   if [[ ! -f "${DEST_DIR}/AGENTS.md" ]]; then
     generate_agents_md "${DEST_DIR}/AGENTS.md"
     substitute_placeholders "${DEST_DIR}/AGENTS.md"
+    render_agents_autonomy "${DEST_DIR}/AGENTS.md"
     log_success "Created: AGENTS.md"
   else
     log_skip "AGENTS.md"

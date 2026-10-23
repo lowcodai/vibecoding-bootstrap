@@ -61,8 +61,12 @@ To update the instructions and hooks from `vibecoding-copilot-governance`:
 ```bash
 ./scripts/sync-governance.sh \
   --type base \
-  --dest /path/to/my-project
+  --dest /path/to/my-project \
+  [--autonomy supervised|branch|trusted]   # ADR-0008; omit to keep the repo's level
 ```
+
+Kit-owned files (`.claude/settings.json`, `.claude/hooks/*.py`, `scripts/orchestrate.py`) are
+refreshed; tuned files are kept. Commit the resulting diff through a PR.
 
 > ⚠️ `--governance-dir` does not exist: the path to `vibecoding-copilot-governance` is
 > resolved via a fixed relative path (`../vibecoding-copilot-governance` from `vibecoding-bootstrap`).
