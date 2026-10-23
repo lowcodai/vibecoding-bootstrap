@@ -62,7 +62,7 @@ check "dry-run shows the level in the summary" "grep -q 'Agent autonomy    : bra
 check "dry-run announces the level file" "grep -q 'would write .ai/autonomy.yaml (level: branch)' '$ROOT/dry.log'"
 
 # ─── Creation at each level ──────────────────────────────────────────────────
-for level in supervised branch trusted; do
+for level in supervised branch trusted yolo; do
   d="$ROOT/p-${level}"
   new_project "$level" "$d"
   rc=$?
@@ -81,6 +81,11 @@ check "[branch] curl and plain push are not denied, force push and gh pr merge a
   "! denies '$ROOT/p-branch' 'Bash(curl:*)' && ! denies '$ROOT/p-branch' 'Bash(git push:*)' && denies '$ROOT/p-branch' 'Bash(git push --force:*)' && denies '$ROOT/p-branch' 'Bash(gh pr merge:*)'"
 check "[trusted] gh pr merge is not denied, --admin is" \
   "! denies '$ROOT/p-trusted' 'Bash(gh pr merge:*)' && denies '$ROOT/p-trusted' 'Bash(gh pr merge --admin:*)'"
+
+check "[yolo] gh pr merge is not denied, force push, push to main and --admin are" \
+  "! denies '$ROOT/p-yolo' 'Bash(gh pr merge:*)' && denies '$ROOT/p-yolo' 'Bash(git push --force:*)' && denies '$ROOT/p-yolo' 'Bash(git push origin main:*)' && denies '$ROOT/p-yolo' 'Bash(gh pr merge --admin:*)'"
+check "[yolo] CLAUDE.md says no human approval and fix CI until green" \
+  "grep -q 'no human approval' '$ROOT/p-yolo/CLAUDE.md' && grep -q 'fix the code until every check is green' '$ROOT/p-yolo/CLAUDE.md'"
 
 # ─── Changing the level of an existing repo ──────────────────────────────────
 d="$ROOT/p-branch"

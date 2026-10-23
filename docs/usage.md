@@ -62,7 +62,7 @@ To update the instructions and hooks from `vibecoding-copilot-governance`:
 ./scripts/sync-governance.sh \
   --type base \
   --dest /path/to/my-project \
-  [--autonomy supervised|branch|trusted]   # ADR-0008; omit to keep the repo's level
+  [--autonomy supervised|branch|trusted|yolo]   # ADR-0008; omit to keep the repo's level
 ```
 
 Kit-owned files (`.claude/settings.json`, `.claude/hooks/*.py`, `scripts/orchestrate.py`) are
