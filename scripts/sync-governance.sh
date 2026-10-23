@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # sync-governance.sh — Synchronizes governance items from vibecoding-copilot-governance
-# Usage: ./scripts/sync-governance.sh --type <base|infra|ai|app|m365> --dest <dest-dir>
+# Usage: ./scripts/sync-governance.sh --type <base|infra|ai|app|m365> --dest <dest-dir> [--autonomy <level>]
+#   --autonomy <supervised|branch|trusted>  set the repo's agent autonomy level (ADR-0008) and re-render
+#                                           the files it drives; without it, the existing level is kept.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,6 +18,7 @@ source "${SCRIPT_DIR}/lib/fs.sh"
 TEMPLATE_TYPE=""
 DEST_DIR=""
 LANG_CODE="en"   # Only 'en' is supported (ADR-0002). The flag is kept for CLI compatibility.
+AUTONOMY=""      # empty = keep the level declared in the repo (ADR-0008)
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -26,6 +29,7 @@ parse_args() {
       --dry-run)      DRY_RUN=true; shift ;;
       --verbose)      VERBOSE=true; shift ;;
       --extend-only)  EXTEND_ONLY=true; shift ;;
+      --autonomy)     AUTONOMY="${2:-}"; shift 2 ;;
       *) log_error "Unknown argument: $1"; exit 1 ;;
     esac
   done
@@ -35,6 +39,10 @@ parse_args() {
   fi
   if [[ -z "$DEST_DIR" ]]; then
     log_error "--dest is required"
+    exit 1
+  fi
+  if [[ -n "$AUTONOMY" ]] && [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted)$ ]]; then
+    log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted)"
     exit 1
   fi
   if [[ "$LANG_CODE" != "en" ]]; then
@@ -189,9 +197,26 @@ sync_methodology() {
     copy_if_not_exists "${src}/agents/prd-generator.agent.md" "${DEST_DIR}/.github/agents/prd-generator.agent.md" || true
 }
 
+# Files the kit owns (ADR-0008 DEC-007): refreshed on every sync so guard rails and kit fixes reach
+# existing repos. Everything else in the kit is project-tuned and only created when missing.
+KIT_OWNED_FILES=(
+  ".claude/settings.json"
+  ".claude/hooks/tool_guardian.py"
+  ".claude/hooks/secrets_scanner.py"
+  ".claude/hooks/autonomy.py"
+  "scripts/orchestrate.py"
+)
+
+is_kit_owned() {
+  local rel="$1" f
+  for f in "${KIT_OWNED_FILES[@]}"; do [[ "$f" == "$rel" ]] && return 0; done
+  return 1
+}
+
 # Synchronizes the sequential Claude Code team kit (ADR-0005) from governance.
-# Common to all project types. Never overwrites: a project's tuned .ai/orchestration.yaml,
-# role prompts or CLAUDE.md must survive a re-sync.
+# Common to all project types. Kit-owned files are refreshed; a project's tuned
+# .ai/orchestration.yaml, role prompts, CLAUDE.md (outside its autonomy block) and secrets
+# allowlist are never overwritten. Then renders the files the autonomy level drives (ADR-0008).
 sync_dev_factory() {
   log_section "Synchronizing the dev factory (agent-neutral kit + docs skeleton)"
   local src="${GOVERNANCE_DIR}/dev-factory/project-template"
@@ -211,8 +236,42 @@ sync_dev_factory() {
   local rel
   while IFS= read -r rel; do
     [[ "$rel" == "CLAUDE.md" ]] && continue
-    copy_if_not_exists "${src}/${rel}" "${DEST_DIR}/${rel}"
+    if is_kit_owned "$rel" && [[ -e "${DEST_DIR}/${rel}" ]]; then
+      if cmp -s "${src}/${rel}" "${DEST_DIR}/${rel}"; then
+        log_skip "${DEST_DIR}/${rel} (up to date)"
+      else
+        copy_file "${src}/${rel}" "${DEST_DIR}/${rel}"
+      fi
+    else
+      copy_if_not_exists "${src}/${rel}" "${DEST_DIR}/${rel}"
+    fi
   done < <(cd "$src" && find . -type f -not -path '*/__pycache__/*' -not -name '*.pyc' | sed 's|^\./||' | sort)
+
+  render_autonomy "$src"
+}
+
+# Writes the autonomy level (when --autonomy is given) and re-renders .claude/settings.json and the
+# managed blocks of CLAUDE.md and AGENTS.md, with governance's copy of the policy module.
+render_autonomy() {
+  local src="$1"
+  log_section "Rendering the autonomy level (ADR-0008)"
+  if [[ "${EXTEND_ONLY:-false}" == "true" ]]; then
+    log_skip "autonomy rendering (extend-only)"
+    return 0
+  fi
+  local args=(render --root "$DEST_DIR")
+  [[ -n "$AUTONOMY" ]] && args+=(--level "$AUTONOMY")
+  [[ "${DRY_RUN:-false}" == "true" ]] && args+=(--dry-run)
+  local out
+  if ! out="$(python3 "${src}/.claude/hooks/autonomy.py" "${args[@]}" 2>&1)"; then
+    log_error "autonomy.py render failed: ${out}"
+    return 1
+  fi
+  if [[ -n "$out" ]]; then
+    while IFS= read -r line; do log_info "$line"; done <<< "$out"
+  else
+    log_skip "autonomy-driven files (already match the level)"
+  fi
 }
 
 # Synchronizes standard templates from governance

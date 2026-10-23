@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # tests/test-dev-factory-sync.sh — Verifies that sync-governance.sh installs the dev factory
-# (ADR-0005) and never overwrites a project's tuned files on re-sync.
+# (ADR-0005) and never overwrites a project's tuned files on re-sync (kit-owned files and the
+# autonomy level are covered by tests/test-autonomy.sh, ADR-0008).
 # NB: set -e is not used in the tests so that return codes can be captured
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
