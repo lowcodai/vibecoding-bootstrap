@@ -62,6 +62,7 @@ Check with:
   -o, --org <org>                   GitHub organization
   -d, --output-dir <path>           Destination directory
       --autonomy <level>            supervised (default) | branch | trusted | yolo — agent autonomy (ADR-0008, ADR-0009)
+      --executors <list>            claude-code (default) | claude-code,openhands — DEV executors allowed (ADR-0010)
       --no-github                   Local only (no gh repo create)
       --dry-run                     Simulation without changes
       --verbose                     Detailed logging
@@ -140,6 +141,20 @@ it later with:
 This rewrites `.ai/autonomy.yaml` and re-renders `.claude/settings.json` and the autonomy blocks of
 `CLAUDE.md` and `AGENTS.md`; review the diff and merge it — the wider level applies only once it is on
 `main`. A missing or invalid level file means `supervised`.
+
+## DEV executors (ADR-0010)
+
+The same file lists the agents allowed to do DEV work in orchestrated runs: `executors: [claude-code]`
+(default) or `[claude-code, openhands]` — OpenHands for long sessions, run by `orchestrate.py` only, in
+an isolated runner (governance `adapters/openhands/`). A task picks one with `executor:`. Choose at
+creation with `new-project.sh --executors`, change later with:
+
+```bash
+./scripts/sync-governance.sh --type <type> --dest /path/to/repo --executors claude-code,openhands
+```
+
+As for the level, the wider list applies only once it is merged on `main`. Templates ship
+`[claude-code]`.
 
 ## Security
 

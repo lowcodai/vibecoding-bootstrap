@@ -10,6 +10,7 @@
 #   -o, --org <org>                   GitHub organization (optional)
 #   -d, --output-dir <path>           Destination directory (default: ../<name>)
 #       --autonomy <level>            supervised (default) | branch | trusted | yolo (ADR-0008, ADR-0009)
+#       --executors <list>            claude-code (default) | claude-code,openhands (ADR-0010)
 #       --no-github                   Do not create the repo on GitHub
 #       --dry-run                     Simulation mode without changes
 #       --verbose                     Detailed logging
@@ -48,6 +49,7 @@ NO_ADR=false
 NO_LABELS=false
 SKIP_AWESOME_COPILOT=false
 AUTONOMY="supervised"   # agent autonomy level of the new repo (ADR-0008)
+EXECUTORS="claude-code" # DEV executors the new repo allows (ADR-0010)
 LANG_CODE="en"   # Only 'en' is supported. The flag is kept for CLI compatibility; French generation has been retired.
 
 # Counters for the final summary
@@ -79,6 +81,10 @@ Options:
                                       yolo        no human approval: agents push, open the PR, fix
                                                   until CI is green and merge it (ADR-0009)
                                     Change it later: sync-governance.sh --autonomy <level>
+      --executors <list>            DEV executors the repo allows (ADR-0010), default: claude-code
+                                      claude-code,openhands  also OpenHands, for long sessions,
+                                                             run only in an isolated runner
+                                    Change it later: sync-governance.sh --executors <list>
       --no-github                   No GitHub creation (local only)
       --dry-run                     Simulation: shows actions without performing them
       --verbose                     Detailed logging
@@ -124,6 +130,7 @@ parse_args() {
       -o|--org)             ORG="$2"; shift 2 ;;
       -d|--output-dir)      OUTPUT_DIR="$2"; shift 2 ;;
       --autonomy)           AUTONOMY="${2:-}"; shift 2 ;;
+      --executors)          EXECUTORS="${2:-}"; shift 2 ;;
       -l|--lang)            LANG_CODE="$2"; shift 2 ;;
       --no-github)          NO_GITHUB=true; shift ;;
       --dry-run)            DRY_RUN=true; shift ;;
@@ -142,6 +149,10 @@ parse_args() {
 
 # ─── Input validation ──────────────────────────────────────────────────────────
 validate_inputs() {
+  if [[ ! "$EXECUTORS" =~ ^(claude-code|openhands)(,(claude-code|openhands))?$ ]]; then
+    log_error "Invalid --executors: ${EXECUTORS} (comma-separated: claude-code, openhands)"
+    exit 1
+  fi
   if [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted|yolo)$ ]]; then
     log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted|yolo)"
     exit 1
@@ -271,6 +282,7 @@ show_plan() {
   echo "  Directory         : ${OUTPUT_DIR}"
   echo "  GitHub visibility : ${VISIBILITY}"
   echo "  Agent autonomy    : ${AUTONOMY} (ADR-0008)"
+  echo "  DEV executors     : ${EXECUTORS} (ADR-0010)"
   echo "  Create on GitHub  : $([[ "$NO_GITHUB" == "true" ]] && echo "No" || echo "Yes")"
   echo "  Dry-run mode      : ${DRY_RUN}"
   echo "  Extend-only mode  : ${EXTEND_ONLY}"
@@ -296,6 +308,7 @@ step_apply_template() {
     "--dest" "$OUTPUT_DIR"
     "--lang" "$LANG_CODE"
     "--autonomy" "$AUTONOMY"
+    "--executors" "$EXECUTORS"
   )
   [[ "$DRY_RUN" == "true" ]]     && args+=("--dry-run")
   [[ "$VERBOSE" == "true" ]]     && args+=("--verbose")
@@ -313,6 +326,7 @@ step_sync_governance() {
     "--dest" "$OUTPUT_DIR"
     "--lang" "$LANG_CODE"
     "--autonomy" "$AUTONOMY"
+    "--executors" "$EXECUTORS"
   )
   [[ "$DRY_RUN" == "true" ]]     && args+=("--dry-run")
   [[ "$VERBOSE" == "true" ]]     && args+=("--verbose")
@@ -420,13 +434,13 @@ step_finalize() {
       echo "Repo: ${REPO_NAME}"
       echo ""
       echo "## Actions performed"
-      for a in "${ACTIONS_DONE[@]}"; do echo "- $a"; done
+      for a in ${ACTIONS_DONE[@]+"${ACTIONS_DONE[@]}"}; do echo "- $a"; done
       echo ""
       echo "## Actions skipped"
       for s in "${ACTIONS_SKIPPED[@]}"; do echo "- $s"; done
       echo ""
       echo "## Warnings"
-      for w in "${WARNINGS_LIST[@]}"; do echo "- $w"; done
+      for w in ${WARNINGS_LIST[@]+"${WARNINGS_LIST[@]}"}; do echo "- $w"; done
     } > "$log_file"
     log_success "Bootstrap log: $log_file"
   fi
@@ -443,7 +457,7 @@ show_summary() {
 
   if [[ ${#ACTIONS_DONE[@]} -gt 0 ]]; then
     echo -e "${_CLR_SUCCESS}Actions performed:${_CLR_RESET}"
-    for a in "${ACTIONS_DONE[@]}"; do echo "  ✓ $a"; done
+    for a in ${ACTIONS_DONE[@]+"${ACTIONS_DONE[@]}"}; do echo "  ✓ $a"; done
   fi
 
   if [[ ${#ACTIONS_SKIPPED[@]} -gt 0 ]]; then
@@ -455,7 +469,7 @@ show_summary() {
   if [[ ${#WARNINGS_LIST[@]} -gt 0 ]]; then
     echo ""
     echo -e "${_CLR_WARN}Warnings:${_CLR_RESET}"
-    for w in "${WARNINGS_LIST[@]}"; do echo "  ⚠ $w"; done
+    for w in ${WARNINGS_LIST[@]+"${WARNINGS_LIST[@]}"}; do echo "  ⚠ $w"; done
   fi
 
   echo ""
