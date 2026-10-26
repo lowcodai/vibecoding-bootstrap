@@ -2,6 +2,7 @@
 # apply-template.sh — Copies and instantiates a template into the target directory
 # Usage: ./scripts/apply-template.sh --type <base|infra|ai|app|m365> --name <repo-name> --dest <dest-dir>
 #        [--autonomy <supervised|branch|trusted|yolo>]   (level rendered into AGENTS.md, ADR-0008)
+#        [--executors <claude-code[,openhands]>]          (DEV executors rendered into AGENTS.md, ADR-0010)
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,6 +24,7 @@ DEST_DIR=""
 DATE_TODAY="$(date +%Y-%m-%d)"
 LANG_CODE="en"   # Only 'en' is supported. The flag is kept for CLI compatibility; French generation has been retired.
 AUTONOMY="supervised"
+EXECUTORS="claude-code"
 GOVERNANCE_DIR="${GOVERNANCE_DIR:-${VIBECODING_GOVERNANCE_DIR:-${BOOTSTRAP_DIR}/../vibecoding-copilot-governance}}"
 
 # ─── Argument parsing ─────────────────────────────────────────────────────────
@@ -38,12 +40,18 @@ parse_args() {
       --extend-only)  EXTEND_ONLY=true; shift ;;
       --force)        FORCE=true; shift ;;
       --autonomy)     AUTONOMY="${2:-}"; shift 2 ;;
+      --executors)    EXECUTORS="${2:-}"; shift 2 ;;
       *) log_error "Unknown argument: $1"; exit 1 ;;
     esac
   done
 
   if [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted|yolo)$ ]]; then
     log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted|yolo)"
+    exit 1
+  fi
+
+  if [[ ! "$EXECUTORS" =~ ^(claude-code|openhands)(,(claude-code|openhands))?$ ]]; then
+    log_error "Invalid --executors: ${EXECUTORS} (comma-separated: claude-code, openhands)"
     exit 1
   fi
 
@@ -200,7 +208,7 @@ render_agents_autonomy() {
   local dest="$1" block
   [[ -f "$dest" ]] || return 0
   local module="${GOVERNANCE_DIR}/dev-factory/project-template/.claude/hooks/autonomy.py"
-  if [[ -f "$module" ]] && block="$(python3 "$module" agents-block --level "$AUTONOMY")"; then
+  if [[ -f "$module" ]] && block="$(python3 "$module" agents-block --level "$AUTONOMY" --executors "$EXECUTORS")"; then
     :
   else
     log_warn "autonomy.py not found (${module}): AGENTS.md gets empty autonomy markers, filled by sync-governance.sh"
@@ -267,8 +275,8 @@ EOF
 
 | Role | Does | Never |
 |------|------|-------|
-| Orchestrator (Hermes today) | frames work, writes plans and task contracts, runs `orchestrate.py`, arbitrates, reports | writes code, merges |
-| DEV | implements, writes tests, runs lint/tests, commits locally | pushes, merges, leaves the scope |
+| Orchestrator (Hermes today) | frames work, writes plans and task contracts, picks the DEV executor, runs `orchestrate.py`, arbitrates, reports | writes code, merges, runs a coding agent itself |
+| DEV (Claude Code; OpenHands for long sessions where **Autonomy** allows it) | implements, writes tests, runs lint/tests, commits locally | pushes, merges, leaves the scope |
 | REVIEW | judges the diff against ACs and ADRs | edits files |
 | TEST | judges validation results against ACs | edits files, overrides a failing command |
 | Human | decides ADRs, approves, merges (see **Autonomy**) | — |
@@ -286,7 +294,8 @@ EOF
 - Run lint and tests and report their real output before declaring work done.
 - Leave the worktree clean; record any gap or risk in your result.
 
-**Ask first** — stop, report, let the orchestrator escalate to a human
+**Ask first** — stop, report, let the orchestrator escalate to a human (headless: end with
+status `BLOCKED` and the question as reason)
 - A decision no accepted ADR covers, or an ADR that contradicts the code.
 - New dependency, database schema or public API/contract change, CI workflow change.
 - Anything touching authentication, secrets, access control, production, public

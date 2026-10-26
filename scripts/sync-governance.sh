@@ -2,6 +2,7 @@
 # sync-governance.sh — Synchronizes governance items from vibecoding-copilot-governance
 # Usage: ./scripts/sync-governance.sh --type <base|infra|ai|app|m365> --dest <dest-dir> [--autonomy <level>]
 #   --autonomy <supervised|branch|trusted|yolo>  set the repo's agent autonomy level (ADR-0008) and re-render
+#   --executors <claude-code[,openhands]>       set the DEV executors the repo allows (ADR-0010) and re-render
 #                                           the files it drives; without it, the existing level is kept.
 set -euo pipefail
 
@@ -19,6 +20,7 @@ TEMPLATE_TYPE=""
 DEST_DIR=""
 LANG_CODE="en"   # Only 'en' is supported (ADR-0002). The flag is kept for CLI compatibility.
 AUTONOMY=""      # empty = keep the level declared in the repo (ADR-0008)
+EXECUTORS=""     # empty = keep the executors declared in the repo (ADR-0010)
 
 parse_args() {
   while [[ $# -gt 0 ]]; do
@@ -30,6 +32,7 @@ parse_args() {
       --verbose)      VERBOSE=true; shift ;;
       --extend-only)  EXTEND_ONLY=true; shift ;;
       --autonomy)     AUTONOMY="${2:-}"; shift 2 ;;
+      --executors)    EXECUTORS="${2:-}"; shift 2 ;;
       *) log_error "Unknown argument: $1"; exit 1 ;;
     esac
   done
@@ -43,6 +46,10 @@ parse_args() {
   fi
   if [[ -n "$AUTONOMY" ]] && [[ ! "$AUTONOMY" =~ ^(supervised|branch|trusted|yolo)$ ]]; then
     log_error "Invalid --autonomy: ${AUTONOMY} (values: supervised|branch|trusted|yolo)"
+    exit 1
+  fi
+  if [[ -n "$EXECUTORS" ]] && [[ ! "$EXECUTORS" =~ ^(claude-code|openhands)(,(claude-code|openhands))?$ ]]; then
+    log_error "Invalid --executors: ${EXECUTORS} (comma-separated: claude-code, openhands)"
     exit 1
   fi
   if [[ "$LANG_CODE" != "en" ]]; then
@@ -261,6 +268,7 @@ render_autonomy() {
   fi
   local args=(render --root "$DEST_DIR")
   [[ -n "$AUTONOMY" ]] && args+=(--level "$AUTONOMY")
+  [[ -n "$EXECUTORS" ]] && args+=(--executors "$EXECUTORS")
   [[ "${DRY_RUN:-false}" == "true" ]] && args+=(--dry-run)
   local out
   if ! out="$(python3 "${src}/.claude/hooks/autonomy.py" "${args[@]}" 2>&1)"; then

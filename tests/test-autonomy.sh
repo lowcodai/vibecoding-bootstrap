@@ -59,7 +59,8 @@ check "sync-governance rejects an unknown level" "[[ $rc -ne 0 && ! -e '$ROOT/ba
 new_project branch "$ROOT/dry" --dry-run
 check "dry-run creates nothing" "[[ ! -e '$ROOT/dry' ]]"
 check "dry-run shows the level in the summary" "grep -q 'Agent autonomy    : branch' '$ROOT/dry.log'"
-check "dry-run announces the level file" "grep -q 'would write .ai/autonomy.yaml (level: branch)' '$ROOT/dry.log'"
+check "dry-run announces the level file" "grep -q 'would write .ai/autonomy.yaml (level: branch' '$ROOT/dry.log'"
+check "dry-run shows the executors in the summary" "grep -q 'DEV executors     : claude-code' '$ROOT/dry.log'"
 
 # ─── Creation at each level ──────────────────────────────────────────────────
 for level in supervised branch trusted yolo; do
@@ -86,6 +87,31 @@ check "[yolo] gh pr merge is not denied, force push, push to main and --admin ar
   "! denies '$ROOT/p-yolo' 'Bash(gh pr merge:*)' && denies '$ROOT/p-yolo' 'Bash(git push --force:*)' && denies '$ROOT/p-yolo' 'Bash(git push origin main:*)' && denies '$ROOT/p-yolo' 'Bash(gh pr merge --admin:*)'"
 check "[yolo] CLAUDE.md says no human approval and fix CI until green" \
   "grep -q 'no human approval' '$ROOT/p-yolo/CLAUDE.md' && grep -q 'fix the code until every check is green' '$ROOT/p-yolo/CLAUDE.md'"
+
+# ─── DEV executors (ADR-0010) ────────────────────────────────────────────────
+executors_of() { grep -E '^executors:' "$1/.ai/autonomy.yaml" | sed 's/#.*//; s/[[:space:]]*$//'; }
+check "new-project --help documents --executors" \
+  "bash '${SCRIPTS}/new-project.sh' --help | grep -q -- '--executors <list>'"
+check "[supervised] default executors: claude-code only" "[[ \"\$(executors_of '$ROOT/p-supervised')\" == 'executors: [claude-code]' ]]"
+check "[supervised] AGENTS.md lists claude-code only" "grep -q 'orchestrated runs (ADR-0010): \`claude-code\`. A task' '$ROOT/p-supervised/AGENTS.md'"
+new_project branch "$ROOT/p-oh" --executors claude-code,openhands
+rc=$?
+check "new-project --executors claude-code,openhands exits 0" "[[ $rc -eq 0 ]]"
+check "level file allows openhands" "[[ \"\$(executors_of '$ROOT/p-oh')\" == 'executors: [claude-code, openhands]' ]]"
+check "AGENTS.md lists both executors and check passes" "grep -q '\`claude-code\`, \`openhands\`' '$ROOT/p-oh/AGENTS.md' && check_ok '$ROOT/p-oh'"
+check "AGENTS.md role table names OpenHands" "grep -q 'OpenHands for long sessions' '$ROOT/p-oh/AGENTS.md'"
+check "OpenHands role prompt shipped" "[[ -f '$ROOT/p-oh/.ai/roles/dev-openhands.md' ]]"
+bash "${SCRIPTS}/new-project.sh" -t base -n badx --executors codex --no-github --yes -d "$ROOT/badx" >/dev/null 2>&1
+rc=$?
+check "new-project rejects an unknown executor" "[[ $rc -ne 0 && ! -e '$ROOT/badx' ]]"
+bash "${SCRIPTS}/sync-governance.sh" --type base --dest "$ROOT/p-oh" --executors openhands,codex >/dev/null 2>&1
+rc=$?
+check "sync-governance rejects an unknown executor" "[[ $rc -ne 0 ]]"
+bash "${SCRIPTS}/sync-governance.sh" --type base --dest "$ROOT/p-oh" --executors claude-code >"$ROOT/narrow.log" 2>&1
+rc=$?
+check "sync --executors claude-code narrows the list" "[[ $rc -eq 0 && \"\$(executors_of '$ROOT/p-oh')\" == 'executors: [claude-code]' ]]"
+check "AGENTS.md follows and check passes" "! grep -q '\`openhands\`' '$ROOT/p-oh/AGENTS.md' && check_ok '$ROOT/p-oh'"
+check "level kept when only executors change" "[[ \"\$(level_of '$ROOT/p-oh')\" == 'branch' ]]"
 
 # ─── Changing the level of an existing repo ──────────────────────────────────
 d="$ROOT/p-branch"
