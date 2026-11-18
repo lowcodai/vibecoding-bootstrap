@@ -47,7 +47,7 @@ done
 check "no .hermes.md written (ADR-0007)" "[[ ! -f '${TMPDIR}/.hermes.md' ]]"
 check "orchestrate.py is executable" "[[ -x '${TMPDIR}/scripts/orchestrate.py' ]]"
 check "hooks are executable" "[[ -x '${TMPDIR}/.claude/hooks/tool_guardian.py' && -x '${TMPDIR}/.claude/hooks/secrets_scanner.py' ]]"
-check "settings.json wires the hooks" "grep -q 'tool_guardian.py' '${TMPDIR}/.claude/settings.json' && grep -q 'secrets_scanner.py' '${TMPDIR}/.claude/settings.json'"
+check "settings.json wires secrets_scanner, not the V1 tool_guardian" "grep -q 'secrets_scanner.py' '${TMPDIR}/.claude/settings.json' && ! grep -q 'tool_guardian.py' '${TMPDIR}/.claude/settings.json'"
 check "CLAUDE.md project name substituted" "grep -q 'CLAUDE.md — vibecoding-test-dev-factory' '${TMPDIR}/CLAUDE.md'"
 check "no __pycache__ copied" "[[ -z \"\$(find '${TMPDIR}' -name '*.pyc')\" ]]"
 
